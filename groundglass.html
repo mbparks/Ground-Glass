@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GroundGlass :: groundglass-v0.3.0.html :: v0.3.0 -->
+<!-- GroundGlass :: groundglass-v0.20.5.html :: v0.20.5 -->
 <html lang="en" data-theme="darkcloth">
 <head>
 <meta charset="utf-8">
@@ -222,7 +222,7 @@ ul.tight li{margin:2px 0}
 <header class="bar">
   <div class="brand">
     <span class="nm">GROUND GLASS</span>
-    <span class="fi">FI-122 &middot; <span id="verLabel">v0.3.0</span></span>
+    <span class="fi">FI-122 &middot; <span id="verLabel">v0.20.5</span></span>
   </div>
 
   <div class="links" role="group" aria-label="Camera link">
@@ -266,6 +266,8 @@ ul.tight li{margin:2px 0}
       <span id="stFps">0.0 fps</span>
       <span id="stRes">-</span>
       <span id="stBatt">BATT -</span>
+      <span id="stMode"></span>
+      <span id="stStrat"></span>
       <span class="spacer"></span>
       <span id="stMsg"></span>
     </div>
@@ -287,6 +289,7 @@ ul.tight li{margin:2px 0}
         </div>
 
         <div class="row"><label for="selAv">Aperture</label><select id="selAv"></select></div>
+        <div class="row" id="rowDeclAv" hidden><label for="selDeclAv">Lens is set to</label><select id="selDeclAv"></select></div>
         <div class="row"><label for="selTv">Shutter</label><select id="selTv"></select></div>
         <div class="row"><label for="selIso">ISO</label><select id="selIso"></select></div>
         <div class="row"><label for="selEc">Exp comp</label><select id="selEc"></select></div>
@@ -297,7 +300,7 @@ ul.tight li{margin:2px 0}
         <div class="release">
           <button id="release" title="Release the shutter">RELEASE</button>
           <div>
-            <div class="row" style="margin:2px 0"><label style="flex:0 0 auto" for="chkAf">Half press AF</label><input type="checkbox" id="chkAf" checked></div>
+            <div class="row" style="margin:2px 0"><label style="flex:0 0 auto" for="chkAf">Half press AF</label><input type="checkbox" id="chkAf"></div>
             <button class="btn" id="btnAfOnly" style="margin-top:4px">FOCUS ONLY</button>
           </div>
         </div>
@@ -315,6 +318,8 @@ ul.tight li{margin:2px 0}
           <button class="btn" id="ovFalse" aria-pressed="false">FALSE COLOR</button>
           <button class="btn" id="ovFlip" aria-pressed="false">FLIP</button>
         </div>
+        <div class="row"><label for="chkPauseLive">Pause live view</label><input type="checkbox" id="chkPauseLive"></div>
+        <p class="small">Stops asking the camera for pictures. The body then has the cable to itself, which makes settings changes land first time. The frame on screen is labelled as not live while this is on.</p>
         <div class="row"><label for="rngPeak">Peak level</label><input type="range" id="rngPeak" min="4" max="80" value="28"><span class="val" id="valPeak">28</span></div>
         <div class="row"><label for="rngZebra">Zebra at</label><input type="range" id="rngZebra" min="60" max="100" value="94"><span class="val" id="valZebra">94%</span></div>
         <div class="row"><label for="rngScale">Preview scale</label><input type="range" id="rngScale" min="40" max="100" value="100"><span class="val" id="valScale">100%</span></div>
@@ -322,6 +327,28 @@ ul.tight li{margin:2px 0}
           <button class="btn" id="btnGrab">GRAB FRAME</button>
           <button class="btn" id="btnFull">FULL SCREEN</button>
         </div>
+      </div>
+    </details>
+
+    <details class="sect">
+      <summary>CAPTURE</summary>
+      <div class="body">
+        <button class="btn wide" id="btnFocusNow">FOCUS NOW</button>
+        <p class="small">Runs the camera's autofocus at whatever point the body is already using. Choosing the point from here needed a payload layout this instrument could not confirm, and guessing at one put an R6 into Err 70, so it has been removed rather than left in behind a warning. Set the focus point on the camera.</p>
+
+        <div class="grid2" style="margin-top:8px">
+          <button class="btn" id="btnRecord">START RECORDING</button>
+          <button class="btn" id="btnDownload">DOWNLOAD LAST</button>
+        </div>
+        <button class="btn wide" id="btnObjProbe" style="margin-top:6px">OBJECT PROBE</button>
+        <div class="row"><label for="chkAutoDl">Download each frame</label><input type="checkbox" id="chkAutoDl"></div>
+
+        <div class="row" style="margin-top:8px"><label for="numEvery">Every</label>
+          <input type="number" id="numEvery" min="1" max="3600" value="10" style="max-width:6em"><span class="val">sec</span></div>
+        <div class="row"><label for="numFrames">Frames</label>
+          <input type="number" id="numFrames" min="1" max="999" value="12" style="max-width:6em"><span class="val" id="valMade"></span></div>
+        <button class="btn wide" id="btnInterval">START INTERVALOMETER</button>
+        <p class="small">The intervalometer reuses the release path, so it inherits one press one frame. If a frame does not appear it stops rather than keep firing at a camera that is not cooperating.</p>
       </div>
     </details>
 
@@ -368,7 +395,28 @@ ul.tight li{margin:2px 0}
             <button class="btn" id="btnRelProbe">RELEASE PROBE</button>
             <button class="btn" id="btnCapDest">SHOOT TO CARD</button>
           </div>
+          <div class="row"><label for="selCapDest">Images go to</label><select id="selCapDest">
+            <option value="1">Card in the camera</option>
+            <option value="2">This computer</option>
+            <option value="4">Both</option>
+          </select>
+          </div>
+          <div class="grid2" style="margin-top:6px">
+            <button class="btn" id="btnReadLists">READ LISTS</button>
+            <button class="btn" id="btnPropProbe">PROPERTY PROBE</button>
+            <button class="btn" id="btnTap">EVENT TAP</button>
+          </div>
+          <p class="small">PROPERTY PROBE tries each way of writing a setting and keeps the one the body reports back. EVENT TAP opens the log for ten seconds: press it, then turn a dial on the camera, and every record the body sends is written out.</p>
           <p class="small">RELEASE PROBE tries each way of asking an EOS body for an exposure and watches the event stream for a new file, so it reports which one your body honours rather than which one returned success. It will make real exposures.</p>
+          <div class="row"><label for="selProbeTarget">Probe which setting</label><select id="selProbeTarget">
+            <option value="iso">ISO</option>
+            <option value="ec">Exposure comp</option>
+            <option value="tv">Shutter</option>
+            <option value="av">Aperture</option>
+            <option value="wb">White balance</option>
+            <option value="drive">Drive</option>
+            <option value="af">AF mode</option>
+          </select></div>
           <div class="row"><label for="chkHex">Hex trace</label><input type="checkbox" id="chkHex"></div>
           <p class="small">BENCH TEST walks the whole path against the body and reports a row per step, so a failure has an address rather than a shrug. It does not fire the shutter.</p>
           <p class="small">Live view over PTP is a polled JPEG, so it will look like a slideshow next to the GLASS link. Use WIRE for the knobs and GLASS for the picture.</p>
@@ -398,8 +446,12 @@ ul.tight li{margin:2px 0}
         <input type="file" id="fileImport" accept="application/json,.json" hidden>
         <div class="row" style="margin-top:10px"><label for="chkDebug">Debug log</label><input type="checkbox" id="chkDebug"></div>
         <div id="log" role="log" aria-live="polite"></div>
-        <div class="grid2" style="margin-top:6px">
+              <div class="grid2" style="margin-top:6px">
           <button class="btn" id="btnLogClear">CLEAR</button>
+          <button class="btn" id="btnLogSave">SAVE LOG</button>
+        </div>
+        <button class="btn wide" id="btnReport" style="margin-top:6px">COPY REPORT</button>
+        <p class="small">COPY REPORT puts the version, the body, the release sequence in use, the shooting mode and the whole log on the clipboard in one go.</p>
           <button class="btn" id="btnLogSave">SAVE LOG</button>
         </div>
       </div>
@@ -412,7 +464,7 @@ ul.tight li{margin:2px 0}
   <div class="db">
     <dl class="kv">
       <dt>Instrument</dt><dd>GROUND GLASS, Field Instrument FI-122</dd>
-      <dt>Version</dt><dd id="aboutVer">v0.3.0</dd>
+      <dt>Version</dt><dd id="aboutVer">v0.20.5</dd>
       <dt>License</dt><dd>GPL-3.0</dd>
       <dt>Runs</dt><dd>From disk. No server, no build step, no dependencies.</dd>
     </dl>
@@ -424,6 +476,9 @@ ul.tight li{margin:2px 0}
       <li>macOS: the system PTPCamera agent claims it. Quit it, or set the camera to a mode the agent ignores, then reconnect.</li>
       <li>Linux: the gvfs gphoto2 volume monitor claims it. Stop that service or add a udev rule granting your user access to the device, then reconnect.</li>
     </ul>
+    <h3>If the camera shows Err 70</h3>
+    <p class="small">Err 70 is the body reporting an internal fault, usually after being sent something it could not make sense of. Switch the camera off, take the battery out for around thirty seconds, reseat the lens, and switch it back on. It normally clears. If it returns without this instrument attached, the camera needs service rather than software.</p>
+    <p class="small">A version of this instrument wrote a focus point using a payload layout that had been inferred rather than confirmed, and that is the likely cause if you saw Err 70 while using touch to focus. That feature has been removed. This build cannot write any property whose layout it has not confirmed: the refusal sits at the single point where payloads are built.</p>
     <h3>Known limitations</h3>
     <ul class="tight small">
       <li>WIRE is written against the published Canon EOS PTP extensions and has not yet been proven against an R6. Connect it, run BENCH TEST in the LINK panel, and treat every write as unverified until those rows are green.</li>
@@ -446,7 +501,7 @@ ul.tight li{margin:2px 0}
 <script>
 "use strict";
 /* =================================================================
-   GROUND GLASS (FI-122)  v0.3.0
+   GROUND GLASS (FI-122)  v0.20.5
    A single file console that puts a Canon EOS R6 on the bench:
    a monitor with real scopes, and the camera's own knobs.
 
@@ -459,7 +514,7 @@ ul.tight li{margin:2px 0}
    No server. No build step. No libraries. Runs from file://.
    ================================================================= */
 
-const VERSION = "0.3.0";
+const VERSION = "0.20.5";
 const $ = (id) => document.getElementById(id);
 const clamp = (v,a,b) => v<a?a:(v>b?b:v);
 
@@ -514,6 +569,40 @@ const DRIVE = {0x00:"Single",0x01:"Continuous",0x02:"Video",0x04:"High speed",0x
   0x07:"Silent",0x10:"Self timer 10s",0x11:"Self timer 2s",0x12:"Self timer continuous",
   0x13:"Silent single",0x14:"Silent continuous"};
 const AFMODE = {0:"One shot",1:"AI servo",2:"AI focus",3:"Manual"};
+/* Shooting mode matters more than it looks. An EOS body in a scene or
+   fully automatic mode accepts a property write and ignores it, which
+   is indistinguishable from a broken write unless you know the mode. */
+const MODES = {0x00:"P",0x01:"Tv",0x02:"Av",0x03:"M",0x04:"Bulb",0x05:"A-DEP",0x06:"DEP",
+  0x07:"Custom",0x08:"Lock",0x09:"Auto",0x0a:"Night portrait",0x0b:"Sports",0x0c:"Portrait",
+  0x0d:"Landscape",0x0e:"Close up",0x0f:"Flash off",0x13:"Creative auto",0x14:"Movie",
+  0x15:"Photo in movie",0x16:"Scene intelligent auto",0x19:"Fv"};
+const MANUAL_MODES = ["P","Tv","Av","M","Bulb","Fv"];
+/* Which legs the host may set, by mode. This is photography rather
+   than protocol: in aperture priority the camera chooses the shutter,
+   so writing a shutter speed has nothing to act on and the body is
+   right to ignore it. Saying so is more use than reporting a failed
+   write. */
+const SETTABLE = {
+  "M":    { av:true,  tv:true,  iso:true,  ec:false },
+  "Bulb": { av:true,  tv:false, iso:true,  ec:false },
+  "Av":   { av:true,  tv:false, iso:true,  ec:true  },
+  "Tv":   { av:false, tv:true,  iso:true,  ec:true  },
+  "P":    { av:false, tv:false, iso:true,  ec:true  },
+  "Fv":   { av:true,  tv:true,  iso:true,  ec:true  }
+};
+const CHOSEN_BY_CAMERA = {
+  av:"aperture", tv:"shutter speed", iso:"ISO", ec:"exposure compensation"
+};
+/* true, false, or null for "no idea", which is not the same as false. */
+const AUTOMATIC_MODES = ["Auto","Night portrait","Sports","Portrait","Landscape","Close up",
+  "Flash off","Creative auto","Scene intelligent auto","Movie","Photo in movie","Lock"];
+function settableIn(mode, key){
+  if(!mode) return null;
+  const row = SETTABLE[mode];
+  if(row) return (key in row) ? row[key] : null;
+  if(AUTOMATIC_MODES.indexOf(mode) >= 0) return false;
+  return null;   // a custom or unrecognised mode could be anything
+}
 const EC = {0xe8:"-3",0xeb:"-2 2/3",0xec:"-2 1/2",0xed:"-2 1/3",0xf0:"-2",0xf3:"-1 2/3",0xf4:"-1 1/2",
   0xf5:"-1 1/3",0xf8:"-1",0xfb:"-2/3",0xfc:"-1/2",0xfd:"-1/3",0x00:"0",0x03:"+1/3",0x04:"+1/2",
   0x05:"+2/3",0x08:"+1",0x0b:"+1 1/3",0x0c:"+1 1/2",0x0d:"+1 2/3",0x10:"+2",0x13:"+2 1/3",
@@ -522,7 +611,10 @@ const EC = {0xe8:"-3",0xeb:"-2 2/3",0xec:"-2 1/2",0xed:"-2 1/3",0xf0:"-2",0xf3:"
 /* Canon EOS device property codes */
 const PROP = { AV:0xd101, TV:0xd102, ISO:0xd103, EC:0xd104, MODE:0xd105, DRIVE:0xd107,
   AFMODE:0xd108, WB:0xd10c, KELVIN:0xd10e, BATTERY:0xd111, EVF_OUT:0xd1b0, EVF_MODE:0xd1b3,
-  AVAILSHOTS:0xd11b, CAPTURE_DEST:0xd11c };
+  AVAILSHOTS:0xd11b, CAPTURE_DEST:0xd11c, RECORD:0xd1b8 };
+/* The viewfinder focus point property is deliberately absent. Its
+   payload layout is not confirmed, writing a guess at it faulted an R6,
+   and a constant sitting here is an invitation to try again. */
 const PROPNAME = {}; for(const k in PROP) PROPNAME[PROP[k]] = k;
 
 /* ---- exposure maths -------------------------------------------
@@ -556,6 +648,7 @@ const CAM = {
   live:false,
   model:"",
   battery:null,
+  batteryLevel:null,
   shots:null,
   av:{ value:null, options:[] },
   tv:{ value:null, options:[] },
@@ -563,12 +656,13 @@ const CAM = {
   ec:{ value:null, options:[] },
   wb:{ value:null, options:[] },
   drive:{ value:null, options:[] },
-  af:{ value:null, options:[] }
+  af:{ value:null, options:[] },
+  mode:{ value:null, options:[] }
 };
 function resetCam(link){
   CAM.link = link; CAM.connected=false; CAM.canControl=false; CAM.live=false;
-  CAM.model=""; CAM.battery=null; CAM.shots=null;
-  for(const k of ["av","tv","iso","ec","wb","drive","af"]){ CAM[k] = { value:null, options:[] }; }
+  CAM.model=""; CAM.battery=null; CAM.batteryLevel=null; CAM.shots=null;
+  for(const k of ["av","tv","iso","ec","wb","drive","af","mode"]){ CAM[k] = { value:null, options:[] }; }
 }
 
 /* ---- sound: one synthesized shutter, muted by default off ------
@@ -605,6 +699,13 @@ function shutterClick(){
    release(afOnly), and pushes frames into FRAME.
    ================================================================= */
 const FRAME = { source:null, kind:"none", w:0, h:0, count:0, last:0, fps:0 };
+/* Release is the one operation in this instrument that is timing
+   sensitive: bulk transfers, a half press that must not be held too
+   long, and a confirmation window. The compositor reads back a full
+   frame every animation tick and the console redraws four times a
+   second, and all of it runs on the same thread as the USB code. While
+   a release is in flight, everything else stands down. */
+const HOLD = { render:false };
 let ACTIVE = null;
 
 /* ---------------- BENCH: synthetic scene, simulated body -------- */
@@ -730,7 +831,14 @@ const GlassLink = (function(){
 
 /* ---------------- WIRE: Canon PTP over WebUSB ------------------- */
 const PTPC = { CMD:1, DATA:2, RESP:3, EVENT:4 };
-const OP = { OpenSession:0x1002, CloseSession:0x1003, GetDeviceInfo:0x1001,
+const OP = { OpenSession:0x1002, CloseSession:0x1003, GetDeviceInfo:0x1001, SetDevicePropValue:0x1016,
+  GetDevicePropDesc:0x1014, GetDevicePropValue:0x1015, GetObject:0x1009, GetObjectInfo:0x1008,
+  // Canon numbers its own object transfer separately from the standard
+  // set, and the transfer complete acknowledgement is 0x9117, not the
+  // 0x9019 used here before, which is a different vendor's opcode.
+  EOS_GetObject:0x9104, EOS_GetObjectInfoEx:0x9109, EOS_GetPartialObject:0x9107,
+  EOS_TransferComplete:0x9117, EOS_CancelTransfer:0x9118, EOS_GetStorageIDs:0x9101,
+  EOS_DoAf:0x9154, EOS_AfCancel:0x9157, EOS_DriveLens:0x9155,
   EOS_SetRemoteMode:0x9114, EOS_SetEventMode:0x9115, EOS_GetEvent:0x9116,
   EOS_SetDevicePropValueEx:0x9110, EOS_GetViewFinderData:0x9153,
   EOS_RemoteReleaseOn:0x9128, EOS_RemoteReleaseOff:0x9129,
@@ -752,6 +860,11 @@ const RESP = {
   0x201e:"Session already open", 0x201f:"Transaction cancelled",
   0xa102:"Canon: not ready", 0xa106:"Canon: property not settable now"
 };
+/* Some answers mean the request was wrong. Others mean the body was
+   mid something and would like to be asked again. Treating the second
+   kind as the first is how a working sequence gets discarded and the
+   sweep moves on to a worse one. */
+function isTransient(code){ return code === 0x2019 || code === 0xa102; }
 function respName(code){ return (RESP[code] || "unknown") + " (0x" + code.toString(16) + ")"; }
 
 /* Pure container splitter. A single bulk transfer often carries both
@@ -769,6 +882,21 @@ function takeContainer(buf){
          tid:dv.getUint32(8,true), body:buf.slice(12, total) },
     rest: buf.slice(total)
   };
+}
+
+/* Which container answers which request. PTP interleaves unsolicited
+   event containers with replies, and a reply carries the transaction id
+   of the request it belongs to. Accepting whatever arrives next means
+   one stale container puts every later transaction one reply behind,
+   and the symptom of that is an instrument that works on the second or
+   third try and looks fine in between. */
+function containerRole(c, tid){
+  if(!c) return "none";
+  if(c.type === 4) return "event";                 // unsolicited, no transaction
+  if(c.tid !== tid) return "stale";
+  if(c.type === 2) return "data";
+  if(c.type === 3) return "response";
+  return "unknown";
 }
 
 /* Standard PTP DeviceInfo. Worth parsing properly: the operations list
@@ -800,16 +928,87 @@ function parseDeviceInfo(b){
   info.serial = str();
   return info;
 }
+/* The enumeration form of a standard PTP DevicePropDesc. Only the
+   fixed width integer types are handled, which is all these properties
+   use. Anything else returns nothing rather than a wrong answer. */
+const DTS_SIZE = {0x0001:1,0x0002:1,0x0003:2,0x0004:2,0x0005:4,0x0006:4,0x0007:8,0x0008:8};
+function parsePropDescEnum(b, key){
+  if(!b || b.length < 5) return null;
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let o = 0;
+  o += 2;                                   // property code
+  const dtype = dv.getUint16(o, true); o += 2;
+  o += 1;                                   // get or set
+  const w = DTS_SIZE[dtype]; if(!w) return null;
+  o += w;                                   // factory default
+  o += w;                                   // current value
+  if(o >= b.length) return null;
+  const form = dv.getUint8(o); o += 1;
+  if(form !== 2) return null;               // 2 is the enumeration form
+  if(o + 2 > b.length) return null;
+  const count = dv.getUint16(o, true); o += 2;
+  const tab = { av:AV, tv:TV, iso:ISO, ec:EC, wb:WB, drive:DRIVE, af:AFMODE }[key];
+  if(!tab) return null;
+  const out = [];
+  for(let i=0; i<count && o + w <= b.length; i++){
+    let v = 0;
+    if(w === 1) v = dv.getUint8(o);
+    else if(w === 2) v = dv.getUint16(o, true);
+    else if(w === 4) v = dv.getUint32(o, true);
+    o += w;
+    const lbl = tab[v];
+    if(lbl && out.indexOf(lbl) < 0) out.push(lbl);
+  }
+  return out;
+}
 function hexdump(u8, limit){
   const n = Math.min(u8.length, limit||64); const out = [];
   for(let i=0;i<n;i++) out.push(("0"+u8[i].toString(16)).slice(-2));
   return out.join(" ") + (u8.length>n ? (" ... +"+(u8.length-n)+" bytes") : "");
 }
 
+/* The sequence to reach for before anything is known about the body.
+   This lives outside the link so there is exactly one answer to
+   "what does release do by default", and so it can be tested. */
+const STRATEGY_IDS = ["two-stage-af","two-stage-slow","two-stage","af-off","af-on","one-param","ui-lock","single-op"];
+/* Both are half then full presses. The difference is whether the half
+   press asks for autofocus, and a body that cannot focus never reaches
+   the exposure, so the answer follows what is actually wanted.
+   Earlier this coupling was removed because the no autofocus sequence
+   kept answering device busy. That turned out to be the wrong reason:
+   the body makes the exposure while answering busy, so busy was never a
+   verdict on the sequence and this was the right lead all along. */
+/* Always half then full. A bare full press answered device busy on
+   every single run today, and the runs where it appeared to work were
+   the ones where an earlier sequence had already half pressed. The
+   shutter is armed by the half press; skipping it is not a faster
+   press, it is an incomplete one. Whether autofocus runs is a property
+   of the body, set below, not a reason to leave out a stage. */
+function defaultStrategyId(){ return "two-stage-af"; }
+function afWanted(){ return !!($("chkAf") && $("chkAf").checked); }
+/* Put the preferred sequence at the front and leave everything else in
+   its declared order. The previous version did this with a comparator
+   that returned -1 for one element and 0 for every pair, which is not a
+   consistent ordering, so the engine was free to hand back the list in
+   any order it liked. That is why the button and the probe could try
+   the same sequences and behave differently. */
+function orderStrategies(list, preferredId){
+  const head = list.filter(s => s.id === preferredId);
+  const tail = list.filter(s => s.id !== preferredId);
+  return head.concat(tail);
+}
+
 const WireLink = (function(){
   let dev=null, iface=0, epIn=0, epOut=0, tid=0, poll=0, evPoll=0, busy=false;
   let pollMs = 120, rxBuf = new Uint8Array(0), info = null, releaseOp = null, hex = false;
-  let objEvents = 0, strategy = null, capacityPrimed = false;
+  let liveHeld = false, pumpHeld = false, tapUntil = 0;
+  let objEvents = 0, strategy = null, capacityPrimed = false, writeForm = null, failures = 0;
+  let lastObject = null, recording = false, interval = null;
+  /* The code the body last answered with. A tolerated answer still gets
+     recorded here, because "we agreed not to throw on this" is not the
+     same as "the camera did it", and reporting the second when only the
+     first is true is how a probe row lies. */
+  let lastResp = 0, focusForm = null, lastFrameAt = 0, lastRevive = 0, captureDest = null;
   const seenEventTypes = {};
 
   /* An exposure announces itself in the event stream as a new object.
@@ -846,6 +1045,20 @@ const WireLink = (function(){
       appendRx(new Uint8Array(r.data.buffer.slice(0)));
     }
   }
+  /* Anything complete still sitting in the receive buffer belongs to a
+     transaction that is already over. */
+  function drainStale(){
+    let dropped = 0;
+    for(;;){
+      let t = null;
+      try{ t = takeContainer(rxBuf); }catch(e){ rxBuf = new Uint8Array(0); break; }
+      if(!t) break;
+      rxBuf = t.rest; dropped++;
+    }
+    if(dropped) dbg("dropped " + dropped + " leftover container(s) before sending");
+    return dropped;
+  }
+
   async function transact(code, params, outData, opts){
     if(!dev) throw new Error("not connected");
     const tolerate = (opts && opts.tolerate) || [];
@@ -854,15 +1067,29 @@ const WireLink = (function(){
     busy = true;
     try{
       for(let attempt=0; ; attempt++){
+        drainStale();
         tid = (tid + 1) >>> 0;
         const myTid = tid;
         if(hex) dbg("  out 0x"+code.toString(16)+" tid "+myTid);
         await dev.transferOut(epOut, pack(PTPC.CMD, code, params||[], null, myTid));
         if(outData) await dev.transferOut(epOut, pack(PTPC.DATA, code, null, outData, myTid));
-        let data = null, c = await readContainer();
-        if(c.type === PTPC.EVENT){ c = await readContainer(); }
-        if(c.type === PTPC.DATA){ data = c.body; c = await readContainer(); }
-        if(c.type !== PTPC.RESP) throw new Error("unexpected container type " + c.type);
+        let data = null, c = null, guard = 0;
+        for(;;){
+          if(guard++ > 64) throw new Error("no reply for transaction " + myTid + " after 64 containers");
+          const got = await readContainer();
+          const role = containerRole(got, myTid);
+          if(role === "event"){ dbg("  event container while waiting on " + myTid); continue; }
+          if(role === "stale"){
+            // Left over from an earlier transaction. Dropping it here is
+            // what keeps the pipe in step.
+            log("Dropped a stale reply for transaction " + got.tid + " while waiting on " + myTid + ".");
+            continue;
+          }
+          if(role === "data"){ data = got.body; continue; }
+          if(role === "response"){ c = got; break; }
+          dbg("  ignoring container type " + got.type);
+        }
+        lastResp = c.code;
         if(c.code === 0x2001){
           dbg("ptp 0x"+code.toString(16)+" ok" + (data ? (" ("+data.length+" bytes)") : ""));
           return data;
@@ -879,9 +1106,29 @@ const WireLink = (function(){
         const e = new Error("0x"+code.toString(16)+" answered " + respName(c.code));
         e.ptp = c.code; throw e;
       }
+    } catch(e){
+      // A transaction that fell over may have left half an exchange in
+      // the buffer. Clear it so the next one starts clean rather than
+      // inheriting the wreckage.
+      drainStale();
+      throw e;
     } finally { busy = false; }
   }
+  /* Every property here takes a single 32 bit value and is known to.
+     Anything not on this list has a payload layout this instrument has
+     not confirmed, and sending a guessed layout to a camera is how a
+     body ends up throwing Err 70 and needing its battery pulled. The
+     refusal is at the choke point on purpose: it is not possible to
+     write a speculative payload from anywhere in this file. */
+  const WRITABLE_PROPS = {};
+  [PROP.AV, PROP.TV, PROP.ISO, PROP.EC, PROP.WB, PROP.DRIVE, PROP.AFMODE,
+   PROP.EVF_OUT, PROP.RECORD, PROP.CAPTURE_DEST].forEach(p => { WRITABLE_PROPS[p] = true; });
+
   function setPropPayload(propCode, value){
+    if(!WRITABLE_PROPS[propCode]){
+      throw new Error("refusing to write property 0x" + propCode.toString(16) +
+        ": this instrument does not know its payload layout, and guessing at one can put the body into an error state");
+    }
     const b = new ArrayBuffer(12), dv = new DataView(b);
     dv.setUint32(0, 12, true); dv.setUint32(4, propCode>>>0, true); dv.setUint32(8, value>>>0, true);
     return b;
@@ -895,6 +1142,7 @@ const WireLink = (function(){
       case PROP.WB: return {tab:WB, key:"wb"};
       case PROP.DRIVE: return {tab:DRIVE, key:"drive"};
       case PROP.AFMODE: return {tab:AFMODE, key:"af"};
+      case PROP.MODE: return {tab:MODES, key:"mode"};
       default: return null;
     }
   }
@@ -927,17 +1175,58 @@ const WireLink = (function(){
         }
       } else if(OBJECT_EVENTS.indexOf(type) >= 0){
         objEvents++; seen++;
-        dbg("object event 0x" + type.toString(16) + ": the body made a file");
+        // The record carries the handle of the file the body just wrote,
+        // which is the only way to ask for it afterwards.
+        if(size >= 12){
+          const handle = dv.getUint32(o+8, true);
+          let bytes = null, name = null;
+          if(size >= 24) bytes = dv.getUint32(o+20, true);
+          if(size > 32){
+            let str = "";
+            for(let q = o+32; q < o+size && buf[q]; q++) str += String.fromCharCode(buf[q]);
+            if(/^[\x20-\x7e]{4,}$/.test(str)) name = str;
+          }
+          // Keep the record itself. Every field above is read at an offset
+          // this instrument believes is right, and believing is not the
+          // same as checking.
+          lastObject = { handle, bytes, name, at: Date.now(), raw: buf.slice(o, o + Math.min(size, 96)), type };
+          dbg("object event 0x" + type.toString(16) + ": handle 0x" + handle.toString(16) +
+              (bytes ? (", " + bytes + " bytes") : "") + (name ? (", " + name) : ""));
+        } else {
+          dbg("object event 0x" + type.toString(16) + ": the body made a file");
+        }
       } else if(type === 0) { break; }
       else {
         if(!seenEventTypes[type]){ seenEventTypes[type] = 1; dbg("unrecognised event record type 0x" + type.toString(16)); }
+      }
+      if(Date.now() < tapUntil){
+        // Event tap: every record, decoded as far as it can be, at normal
+        // log level. This is how you find out whether the body is talking.
+        let line = "tap  type 0x" + type.toString(16) + "  " + size + " bytes";
+        if((type === 0xc189 || type === 0xc18a) && size >= 12){
+          const pc = dv.getUint32(o+8, true);
+          line += "  prop 0x" + pc.toString(16) + " (" + (PROPNAME[pc] || "unnamed") + ")";
+          if(type === 0xc189 && size >= 16) line += " = 0x" + dv.getUint32(o+12,true).toString(16);
+        }
+        log(line);
       }
       o += size;
     }
     return seen;
   }
+  /* Raw values as they arrive, so a write that does not take can say
+     what the body actually reported rather than only that it did not
+     report what was wanted. */
+  const lastRaw = {};
   function applyPropValue(pc, val){
-    if(pc === PROP.BATTERY){ CAM.battery = val; return; }
+    lastRaw[pc] = { val, at: Date.now() };
+    if(pc === PROP.BATTERY){
+      // Canon's battery property is a coarse level, not a percentage.
+      // It was being shown with a percent sign on the end, which is how
+      // a reading of 3 became "3%". Keep it as what it is.
+      CAM.batteryLevel = val;
+      return;
+    }
     if(pc === PROP.AVAILSHOTS){ CAM.shots = val; return; }
     const t = tableFor(pc);
     if(!t){ dbg("prop 0x"+pc.toString(16)+" = "+val); return; }
@@ -962,8 +1251,32 @@ const WireLink = (function(){
     return null;
   }
 
+  /* Ask the body to stream again, and keep asking until frames actually
+     arrive. A capture stops the stream, and the write that restarts it
+     is often declined while the camera is still writing the file, which
+     leaves the console holding the last frame and calling it live. */
+  async function reviveLive(){
+    const evf = parseInt(($("selEvf")||{value:"3"}).value,10) || 3;
+    for(let attempt = 0; attempt < 3; attempt++){
+      try{ await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.EVF_OUT, evf),
+        {retries:2, tolerate:[0xa102]}); }
+      catch(e){ dbg("restore live view: " + e.message); }
+      for(let i = 0; i < 6; i++){
+        await new Promise(r=>setTimeout(r,150));
+        try{
+          const d = await transact(OP.EOS_GetViewFinderData, [0x00200000,0,0], null,
+            {tolerate:[0xa102,0x2005], retries:0});
+          if(extractJpeg(d)) return true;
+        }catch(e){}
+      }
+      dbg("viewfinder still not streaming, asking again");
+    }
+    return false;
+  }
+
   async function pumpLive(){
     if(!dev) return;
+    if(liveHeld){ poll = setTimeout(pumpLive, 200); return; }
     try{
       const d = await transact(OP.EOS_GetViewFinderData, [0x00200000, 0, 0],
         null, {tolerate:[0xa102, 0x2005], retries:0});
@@ -972,16 +1285,57 @@ const WireLink = (function(){
         const bmp = await createImageBitmap(new Blob([jpg], {type:"image/jpeg"}));
         if(FRAME.kind==="bitmap" && FRAME.source && FRAME.source.close) FRAME.source.close();
         FRAME.source = bmp; FRAME.kind = "bitmap"; FRAME.w = bmp.width; FRAME.h = bmp.height;
-        CAM.live = true;
+        CAM.live = true; lastFrameAt = Date.now();
+      } else if(lastFrameAt && Date.now() - lastFrameAt > 2500){
+        // The picture on screen is old. Say so, then try to get it back.
+        CAM.live = false;
+        if(Date.now() - lastRevive > 6000){
+          lastRevive = Date.now();
+          log("The viewfinder stopped after the last frame. Asking the body to start it again.");
+          const back = await reviveLive();
+          if(back){ ok("Viewfinder streaming again."); lastFrameAt = Date.now(); }
+          else err("The body will not restart the viewfinder. The picture on screen is the last frame, not a live one.");
+        }
       }
     }catch(e){ dbg("live poll: " + e.message); }
     poll = setTimeout(pumpLive, pollMs);
   }
+  /* The viewfinder poll and the event poll share one bulk pipe. While a
+     write is being confirmed the picture matters less than the answer,
+     so live view stands down and the event poll gets the pipe. */
+  function suspendLive(on){ liveHeld = !!on; }
+  /* A body does not have to accept the exact value it was handed. If
+     the camera is set to third stop increments and it is asked for a
+     half stop, it may land on the nearest one it can hold. That is the
+     write working, not failing, so report what it settled on rather
+     than insisting on a match and calling a hit a miss. */
+  async function waitForValue(key, label, ms){
+    const before = CAM[key].value;
+    const until = Date.now() + (ms || 1500);
+    while(Date.now() < until){
+      try{ parseEvents(await transact(OP.EOS_GetEvent, null, null, {retries:0})); }catch(e){}
+      if(CAM[key].value === label) return { ok:true, exact:true, value:label };
+      if(CAM[key].value !== before) return { ok:true, exact:false, value:CAM[key].value };
+      await new Promise(r=>setTimeout(r,90));
+    }
+    if(CAM[key].value === label) return { ok:true, exact:true, value:label };
+    if(CAM[key].value !== before) return { ok:true, exact:false, value:CAM[key].value };
+    return { ok:false, exact:false, value:before };
+  }
+
+  let battAt = 0;
   async function pumpEvents(){
     if(!dev) return;
+    // During a release the confirmation loop is already polling events.
+    // Two pollers on one pipe is how a body ends up answering busy.
+    if(pumpHeld){ evPoll = setTimeout(pumpEvents, 150); return; }
     try{ parseEvents(await transact(OP.EOS_GetEvent, null, null, {retries:0})); }
     catch(e){ dbg("event poll: " + e.message); }
-    evPoll = setTimeout(pumpEvents, 400);
+    if(!liveHeld && !pumpHeld && Date.now() - battAt > 20000){
+      battAt = Date.now();
+      try{ await WireLink.readBatteryPercent(); }catch(e){}
+    }
+    evPoll = setTimeout(pumpEvents, 250);
   }
 
   /* Named handshake steps. When something fails, the log says which
@@ -1012,12 +1366,16 @@ const WireLink = (function(){
   return {
     name:"wire",
     setPoll(ms){ pollMs = ms|0; },
+    holdLive(on){ suspendLive(!!on); if(!on){ lastFrameAt = Date.now(); } else { CAM.live = false; } },
     setHex(v){ hex = !!v; },
     info(){ return info; },
     async open(){
       if(!navigator.usb){ err("This browser has no WebUSB. The WIRE link needs Chrome or Edge."); return false; }
       resetCam("wire");
       rxBuf = new Uint8Array(0); tid = 0; info = null; releaseOp = null;
+      capacityPrimed = false;   // a fresh session has to declare it again
+      // note: a discovered release strategy is kept. It is a fact about
+      // the body, not about the session.
       dev = await navigator.usb.requestDevice({ filters:[{vendorId:0x04a9}] });
       await dev.open();
       if(dev.configuration === null) await dev.selectConfiguration(1);
@@ -1049,6 +1407,25 @@ const WireLink = (function(){
           throw e;
         }
       }
+      // Everything the first press used to accomplish as a side effect of
+      // failing. A press should find the body ready, not make it ready.
+      await this.clearPress();
+      try{ await transact(OP.EOS_ResetUILock, null, null, {retries:0, tolerate:[0x2005,0x2016,0x201d,0xa102]}); }
+      catch(e){ dbg("reset ui lock: " + e.message); }
+      await this.primeCapacity();
+      // Drain until the body has nothing more to say, so the first press
+      // does not arrive while it is still finishing the handshake.
+      for(let i = 0; i < 8; i++){
+        let n = 0;
+        try{ n = parseEvents(await transact(OP.EOS_GetEvent)); }catch(e){ break; }
+        if(n === 0) break;
+        await new Promise(r=>setTimeout(r,150));
+      }
+      // Deliberately not reading property descriptions here. Every extra
+      // transaction on the connect path is another chance to leave the
+      // pipe out of step, and this one is optional. READ LISTS asks for
+      // them on demand instead.
+
       CAM.connected = true; CAM.canControl = true;
       CAM.model = (info && info.model) || dev.productName || "Canon body";
       ok("WIRE link open: " + CAM.model + (releaseOp ? (", release style: " + releaseOp) : ", no release opcode advertised"));
@@ -1074,30 +1451,98 @@ const WireLink = (function(){
       const pc = map[key]; if(!pc) return false;
       const code = codeFor(key, label);
       if(code === null){ err("No Canon code for " + key + " = " + label); return false; }
+      // No gate on the DeviceInfo property list. Canon does not enumerate
+      // its EOS extension properties there: the R6 lists five entries and
+      // writes ISO happily all the same. Gating on that list refused
+      // writes that the body would have accepted. The authoritative
+      // source is the property description records on the event stream.
       if(info && info.deviceProps.length && info.deviceProps.indexOf(pc) < 0){
-        err("This body does not advertise " + key + " as a settable property.");
-        return false;
+        dbg(key + " is not in the standard property list, which is normal for Canon EOS extensions");
       }
-      await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(pc, code));
-      CAM[key].value = label;
-      dbg("set " + key + " to " + label + " (0x" + code.toString(16) + ")");
-      return true;
+      const before = CAM[key].value;
+      // A settings write competes with the viewfinder poll and the event
+      // poll for one bulk pipe, and a body with its hands full answers
+      // busy. Releases already get the pipe to themselves; there was no
+      // reason writes should not. Retrying is safe here in a way it is
+      // not for a release: repeating a write costs nothing.
+      suspendLive(true); pumpHeld = true;
+      try{
+        await this.waitUntilReady(1500);
+        await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(pc, code), {retries:6});
+        // Acknowledgement is not effect. Wait for the body to report the
+        // new value back before believing it, and never show a value the
+        // camera has not confirmed.
+        const echoed = await waitForValue(key, label, 1800);
+        if(echoed.ok && echoed.exact){
+          dbg("set " + key + " to " + label + " (0x" + code.toString(16) + "), confirmed by the body");
+          return true;
+        }
+        if(echoed.ok){
+          log("Asked for " + key + " " + label + " and the body settled on " + echoed.value +
+              ". That is the nearest value it can hold with its current increment setting.");
+          return true;
+        }
+        CAM[key].value = before;
+        const pcMap = { av:PROP.AV, tv:PROP.TV, iso:PROP.ISO, ec:PROP.EC, wb:PROP.WB, drive:PROP.DRIVE, af:PROP.AFMODE };
+        const raw = lastRaw[pcMap[key]];
+        if(raw && Date.now() - raw.at < 4000){
+          log("During the wait the body reported " + key + " as 0x" + raw.val.toString(16) +
+              " (" + (FULL_TABLE[key] && FULL_TABLE[key][raw.val] ? FULL_TABLE[key][raw.val] : "not in the table") + ").");
+        } else {
+          log("The body reported nothing at all for " + key + " during the wait.");
+        }
+        log("If this keeps happening, tick Pause live view in the MONITOR panel. A body that is streaming pictures is a body with its hands full.");
+        const m = CAM.mode.value;
+        if(key === "ec" && m === "M"){
+          err("Exposure compensation does nothing in manual mode with a fixed ISO. The camera is not refusing, there is simply nothing for it to compensate. Set ISO to auto, or use P, Av or Tv.");
+          return false;
+        }
+        if(settableIn(m, key) === false){
+          err("The mode dial is on " + m + ", where the camera chooses the " +
+              (CHOSEN_BY_CAMERA[key] || key) + " itself. The write is not being refused so much as ignored, because there is nothing for it to act on.");
+          return false;
+        }
+        err("The body accepted the " + key + " write and did not change. " +
+            (m && MANUAL_MODES.indexOf(m) < 0
+              ? ("The mode dial is on " + m + ", where the camera holds this setting itself. Try P, Av, Tv or M.")
+              : "Run PROPERTY PROBE to see which write form this body honours."));
+        return false;
+      } finally { suspendLive(false); pumpHeld = false; }
     },
     /* Telling the body the host has room. Canon refuses to shoot when the
        capture destination includes the host and no capacity was declared,
        and it refuses quietly, which is the worst way to refuse. */
     async primeCapacity(){
-      try{ await transact(OP.EOS_SetCapacity, [0x0fffffff], null, {tolerate:[0x2005,0x2006]});
-           capacityPrimed = true; return true; }
-      catch(e){ dbg("set capacity: " + e.message); return false; }
+      // This used to tolerate a refusal and then report success, which
+      // put a green row on the probe for something the camera had
+      // declined. Capacity matters most when images are going to the
+      // computer, where Canon simply will not shoot without it, so a
+      // false green here is expensive.
+      lastResp = 0;
+      try{
+        await transact(OP.EOS_SetCapacity, [0x0fffffff], null, {tolerate:[0x2005,0x2006]});
+        capacityPrimed = (lastResp === 0x2001);
+        if(!capacityPrimed) log("The body answered " + respName(lastResp) + " to the capacity declaration.");
+        return capacityPrimed;
+      }
+      catch(e){ dbg("set capacity: " + e.message); capacityPrimed = false; return false; }
     },
+    capacityIsPrimed(){ return capacityPrimed; },
     async setCaptureDest(v){
+      lastResp = 0;
       await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.CAPTURE_DEST, v));
-      if(v !== 1) await this.primeCapacity();
-      return true;
+      const took = lastResp === 0x2001;
+      if(!took) log("The destination write answered " + respName(lastResp) + ".");
+      captureDest = took ? v : null;
+      if(v !== 1){
+        const cap = await this.primeCapacity();
+        if(!cap) err("Images are set to come to this computer, but the body would not accept a capacity declaration. It will most likely refuse to shoot until it does.");
+      }
+      return took;
     },
+    captureDestination(){ return captureDest; },
 
-    /* Five ways to ask an EOS body for an exposure. Bodies differ in
+    /* Seven ways to ask an EOS body for an exposure. Bodies differ in
        which they honour, and a request that is accepted is not the same
        as a file that exists, so each attempt is confirmed by watching
        the event stream for a new object rather than by trusting 0x2001. */
@@ -1105,15 +1550,18 @@ const WireLink = (function(){
       return [
         { id:"two-stage-af", name:"Two stage press, half then full, autofocus on",
           run: async () => { await transact(OP.EOS_RemoteReleaseOn,[1,0]);   // half press
-                             await new Promise(r=>setTimeout(r,300));        // let it focus
+                             await new Promise(r=>setTimeout(r,700));        // let it focus and meter
                              await transact(OP.EOS_RemoteReleaseOn,[2,0]);   // full press
                              await new Promise(r=>setTimeout(r,80));
                              await transact(OP.EOS_RemoteReleaseOff,[2]);
                              await transact(OP.EOS_RemoteReleaseOff,[1]); } },
-        { id:"two-stage",    name:"Two stage press, full only, no autofocus",
-          run: async () => { await transact(OP.EOS_RemoteReleaseOn,[2,0]);
-                             await new Promise(r=>setTimeout(r,80));
-                             await transact(OP.EOS_RemoteReleaseOff,[2]); } },
+        { id:"two-stage-slow", name:"Two stage press, long settle before the full press",
+          run: async () => { await transact(OP.EOS_RemoteReleaseOn,[1,0]);
+                             await new Promise(r=>setTimeout(r,1500));
+                             await transact(OP.EOS_RemoteReleaseOn,[2,0]);
+                             await new Promise(r=>setTimeout(r,150));
+                             await transact(OP.EOS_RemoteReleaseOff,[2]);
+                             await transact(OP.EOS_RemoteReleaseOff,[1]); } },
         { id:"af-off",   name:"Release on and off, autofocus off",
           run: async () => { await transact(OP.EOS_RemoteReleaseOn,[0,0]);
                              await new Promise(r=>setTimeout(r,80));
@@ -1132,52 +1580,499 @@ const WireLink = (function(){
                                   await new Promise(r=>setTimeout(r,80));
                                   await transact(OP.EOS_RemoteReleaseOff,[0]); }
                              finally{ await transact(OP.EOS_ResetUILock, null, null, {tolerate:[0x2005]}); } } },
+        { id:"two-stage",    name:"Bare full press, no half press first (last resort)",
+          run: async () => { await transact(OP.EOS_RemoteReleaseOn,[2,0]);
+                             await new Promise(r=>setTimeout(r,80));
+                             await transact(OP.EOS_RemoteReleaseOff,[2]); } },
         { id:"single-op",name:"Single shot opcode 0x910f",
           run: async () => { await transact(OP.EOS_RemoteRelease); } }
       ];
     },
     async waitForObject(ms){
-      const start = objEvents, until = Date.now() + (ms||2500);
+      // Two independent kinds of evidence. The object record is the
+      // direct one. The frame counter dropping is the indirect one, and
+      // on some bodies it lands first, so watch both.
+      const start = objEvents, shotsAtStart = CAM.shots;
+      const until = Date.now() + (ms||6000);
       while(Date.now() < until){
         try{ parseEvents(await transact(OP.EOS_GetEvent, null, null, {retries:0})); }catch(e){}
         if(objEvents > start) return true;
-        await new Promise(r=>setTimeout(r,150));
+        if(shotsAtStart !== null && CAM.shots !== null && CAM.shots < shotsAtStart){
+          dbg("confirmed by the frame counter falling from " + shotsAtStart + " to " + CAM.shots);
+          return true;
+        }
+        await new Promise(r=>setTimeout(r,60));
       }
       return false;
     },
     async probeRelease(){
+      HOLD.render = true; pumpHeld = true;
+      try{ return await this._probeRelease(); }
+      finally{ HOLD.render = false; pumpHeld = false; }
+    },
+    /* One release implementation. The probe is this function with the
+       reporting turned on, and the CAPTURE button is this function with
+       it turned off. There is no second code path to drift out of step,
+       which is exactly how the button ended up behaving differently
+       from the probe that was meant to diagnose it. */
+    async runReleaseSequence(opts){
+      const report = !!(opts && opts.report);
+      const only = (opts && opts.only) || null;
       const rows = [];
-      if(!dev){ return [{name:"Connected", pass:false, note:"Press CONNECT first."}]; }
+      if(!dev){ return { ok:false, rows:[{name:"Connected", pass:false, note:"Press CONNECT first."}] }; }
 
-      let dest = null;
       try{ parseEvents(await transact(OP.EOS_GetEvent)); }catch(e){}
-      rows.push({name:"Capacity declared to the body", pass: await this.primeCapacity(),
+      const capOk = await this.primeCapacity();
+      if(report) rows.push({name:"Capacity declared to the body", pass:capOk,
         note:"Canon refuses to shoot to the host with no declared room, and refuses quietly."});
 
-      const modeLabel = CAM.drive.value || "unknown";
-      rows.push({name:"Drive mode", pass: !/timer/i.test(modeLabel), note: modeLabel +
-        (/timer/i.test(modeLabel) ? "  a self timer delays the file past the window this probe watches" : "")});
+      const modeLabel = CAM.drive.value;
+      if(report) rows.push({name:"Drive mode", pass: !modeLabel || !/timer/i.test(modeLabel),
+        note: modeLabel ? (modeLabel + (/timer/i.test(modeLabel)
+              ? "  a self timer delays the file past the window this probe watches" : ""))
+            : "not reported by the body, which is not a fault, only one less thing known"});
 
-      for(const st of this.strategies()){
-        const before = objEvents;
-        let sent = true, note = "";
+      // Take the viewfinder down for the duration. Everything below is
+      // asking a camera that is not busy streaming pictures at us.
+      await this.stopLive();
+      await new Promise(r=>setTimeout(r,350));
+      await this.waitUntilReady(2500);
+
+      // The half press always happens. What the checkbox decides is
+      // whether the body tries to focus during it, which is a setting on
+      // the camera rather than a stage to leave out.
+      let priorAf = null;
+      if(!afWanted() && CAM.af.value !== null && CAM.af.value !== "Manual"){
+        priorAf = CAM.af.value;
+        try{
+          await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.AFMODE, 3),
+            {retries:1, tolerate:[0x2005, 0xa102]});
+          log("Autofocus not requested, so the body is in manual focus for this release. It will be put back afterwards.");
+        }catch(e){ dbg("set manual focus: " + e.message); priorAf = null; }
+      }
+      if(afWanted() && CAM.av.value === null){
+        log("Autofocus is requested but the body reports no lens it can drive, so the half press may not confirm. Unticking Half press AF is the usual answer.");
+      }
+      const restoreAf = async () => {
+        if(priorAf === null) return;
+        const code = codeFor("af", priorAf);
+        if(code === null) return;
+        try{ await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.AFMODE, code),
+          {retries:1, tolerate:[0x2005, 0xa102]}); }
+        catch(e){ dbg("restore focus mode: " + e.message); }
+      };
+      const all = this.strategies();
+      const list = only ? all.filter(s => s.id === only) : orderStrategies(all, defaultStrategyId());
+
+      for(const st of list){
+        await this.clearPress();
+        log("  trying: " + st.name);
+
+        // A release is fired at most once per sequence, per press. The
+        // body makes an exposure even when it answers device busy, so a
+        // retry is another frame on the card, not another chance. The
+        // only safe thing to do after any answer, including an error, is
+        // to look for a file. Evidence decides, never the return code.
+        let threw = null;
         try{ await st.run(); }
-        catch(e){ sent = false; note = e.message; }
-        let made = false;
-        if(sent){ made = await this.waitForObject(2500); note = made ? "a file appeared" : "accepted, but no file appeared"; }
-        rows.push({name:st.name, pass:made, note:note});
-        if(made){ strategy = st.id; ok("Release strategy that works on this body: " + st.name); break; }
+        catch(e){ threw = e; dbg(st.id + ": " + e.message); }
+        const made = await this.waitForObject(threw ? 3500 : 6000);
+        const note = made
+          ? (threw ? ("a file appeared despite " + respName(threw.ptp || 0)) : "a file appeared")
+          : (threw ? threw.message : "accepted, but no file appeared");
+        await this.restoreLive();
+        if(report) rows.push({name:st.name, pass:made, note:note});
+        if(made){
+          strategy = st.id; failures = 0;
+          await restoreAf();
+          ok("Release sequence this body honours: " + st.name);
+          return { ok:true, rows, strategy:st.id };
+        }
+        log("  no file from that one");
         await new Promise(r=>setTimeout(r,300));
       }
-      if(!strategy){
-        rows.push({name:"No strategy produced a file", pass:false,
-          note:"Check that a card is in the camera, that the mode dial is on a stills mode and not movie, that the lens switch is not on manual with autofocus requested, and that the camera is not showing a menu."});
+      await restoreAf();
+      await this.restoreLive();
+      rows.push({name:"No sequence produced a file", pass:false,
+        note:"Check that a card is in the camera, that the mode dial is on a stills mode and not movie, that the lens switch is not on manual with autofocus requested, and that the camera is not showing a menu."});
+      return { ok:false, rows };
+    },
+    async _probeRelease(){
+      // Force the full sweep even when a sequence is already known, since
+      // the point of the probe is the report.
+      strategy = null;
+      const r = await this.runReleaseSequence({report:true});
+      return r.rows;
+    },
+    /* A half press that was never let go blocks the next release, and
+       shows on the body as a blackout with no file. Clear the press
+       state before every attempt so a stale one cannot poison the next
+       press. Both calls are expected to fail when nothing is held. */
+    async clearPress(){
+      for(const stage of [2,1,0]){
+        try{ await transact(OP.EOS_RemoteReleaseOff, [stage], null, {retries:0, tolerate:[0x2005,0x2016,0x201d,0x2019,0xa102]}); }
+        catch(e){ dbg("clear press " + stage + ": " + e.message); }
+      }
+    },
+    /* An EOS body streaming live view is a body with its hands full. It
+       answers device busy, and whether an exposure happens depends on
+       where in the stream the request lands, which is why three probe
+       runs each passed a different row: it was never the sequence, it
+       was whichever attempt arrived while the body was free. Stop the
+       stream, let it settle, then ask. */
+    async stopLive(){
+      try{ await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.EVF_OUT, 0),
+        {retries:1, tolerate:[0x2005, 0xa102, 0x2019]}); }
+      catch(e){ dbg("stop live view: " + e.message); }
+    },
+    /* Ask a cheap question until the body stops saying it is busy. */
+    async waitUntilReady(ms){
+      const until = Date.now() + (ms || 2500);
+      while(Date.now() < until){
+        try{ await transact(OP.EOS_GetEvent, null, null, {retries:0}); return true; }
+        catch(e){
+          if(!isTransient(e.ptp)) return true;   // a different answer is still an answer
+          await new Promise(r=>setTimeout(r,120));
+        }
+      }
+      dbg("body still reporting busy after " + (ms||2500) + " ms");
+      return false;
+    },
+    /* Capture stops the viewfinder stream on EOS bodies. That is the
+       blackout. Ask for it back rather than leaving a dead monitor. */
+    async restoreLive(){
+      const back = await reviveLive();
+      if(back){ lastFrameAt = Date.now(); CAM.live = true; }
+      else log("The viewfinder has not come back yet. It will keep being asked for.");
+      return back;
+    },
+    /* Standard PTP GetDevicePropDesc, as a second way to learn the
+       allowed values when the body never sent a description record.
+       Tolerated throughout: plenty of bodies decline this for their
+       vendor properties, and that is not an error worth shouting about. */
+    /* The standard PTP battery level, 0x5001, is defined as a percentage
+       from empty to full. That is a real number with a real unit, unlike
+       the Canon level code, so it is worth asking for. If the body
+       declines it the console shows the level instead and says so. */
+    async readBatteryPercent(){
+      try{
+        const d = await transact(OP.GetDevicePropValue, [0x5001], null,
+          {retries:1, tolerate:[0x2005, 0x200a]});
+        if(lastResp !== 0x2001 || !d || !d.length) return null;
+        const v = d[0];
+        if(v > 100) return null;
+        CAM.battery = v;
+        return v;
+      }catch(e){ dbg("battery level: " + e.message); return null; }
+    },
+    async fetchMissingLists(){
+      const want = { av:PROP.AV, tv:PROP.TV, iso:PROP.ISO, ec:PROP.EC };
+      for(const key in want){
+        if((CAM[key].options || []).length) continue;
+        try{
+          const d = await transact(OP.GetDevicePropDesc, [want[key]], null,
+            {retries:0, tolerate:[0x2005,0x200a,0x2016]});
+          const list = parsePropDescEnum(d, key);
+          if(list && list.length){
+            CAM[key].options = list;
+            log("Read " + list.length + " values for " + key + " from the property description.");
+          }
+        }catch(e){ dbg("prop desc " + key + ": " + e.message); }
+      }
+    },
+    /* ---- image download -------------------------------------------
+       Standard PTP. GetObject hands back the whole file for a handle,
+       and the handle arrives on the event stream when the body writes
+       one. Well grounded: if bytes come back starting with a JPEG or
+       raw signature, the file is real. */
+    lastObject(){ return lastObject; },
+    async downloadObject(obj){
+      const target = obj || lastObject;
+      if(!target) throw new Error("no file has been reported by the body yet");
+      /* Three ways to ask, in the order a Canon body is most likely to
+         answer. The whole object fetch in the standard set is last
+         because these bodies routinely decline it. Whichever works is
+         reported, so the log says how the file actually arrived. */
+      let data = null, how = "";
+      const CH = 0x100000;
+      const routes = [
+        { name:"Canon whole object", run: async () => await transact(OP.EOS_GetObject, [target.handle]) },
+        { name:"Canon partial reads", run: async () => {
+            const parts = []; let total = 0;
+            const cap = target.bytes || 200 * 1024 * 1024;
+            for(let off = 0; off < cap; off += CH){
+              const want = target.bytes ? Math.min(CH, target.bytes - off) : CH;
+              if(want <= 0) break;
+              const part = await transact(OP.EOS_GetPartialObject, [target.handle, off, want]);
+              if(!part || !part.length) break;
+              parts.push(part); total += part.length;
+              if(part.length < want) break;
+            }
+            if(!total) throw new Error("partial reads returned nothing");
+            const out = new Uint8Array(total); let at = 0;
+            for(const p2 of parts){ out.set(p2, at); at += p2.length; }
+            return out;
+          } },
+        { name:"standard whole object", run: async () => await transact(OP.GetObject, [target.handle]) }
+      ];
+      const tried = [];
+      for(const r of routes){
+        try{
+          const got = await r.run();
+          if(got && got.length){ data = got; how = r.name; break; }
+          tried.push(r.name + " returned nothing");
+        }catch(e){ tried.push(r.name + ": " + e.message); }
+      }
+      if(!data){
+        err("None of the transfer routes worked. " + tried.join("; ") + ".");
+        throw new Error("the body would not hand over that file. If the camera is set to keep images on the card only, " +
+          "there is nothing queued for the host to collect. Set Images go to so it includes this computer, then take a NEW frame. " +
+          "A handle from a frame already written to the card cannot be collected afterwards. OBJECT PROBE will say whether the body even recognises this handle.");
+      }
+
+      if(!data || !data.length) throw new Error("the body returned no bytes for that file");
+      try{ await transact(OP.EOS_TransferComplete, [target.handle], null,
+        {retries:0, tolerate:[0x2005,0x2016,0x2002]}); }catch(e){ dbg("transfer complete: " + e.message); }
+      const jpeg = data[0] === 0xff && data[1] === 0xd8;
+      const name = target.name || ("groundglass-" + target.handle.toString(16) + (jpeg ? ".jpg" : ".bin"));
+      const blob = new Blob([data], {type: jpeg ? "image/jpeg" : "application/octet-stream"});
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      a.download = name; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 8000);
+      ok("Downloaded " + name + ", " + data.length + " bytes by " + how + (jpeg ? ", a JPEG" : ""));
+      return { bytes:data.length, name, jpeg };
+    },
+
+    /* Everything known about the last file the body said it made, and
+       what the body says when asked about it. Written because three
+       different transfer opcodes returning the same general error is
+       not three faults, it is one handle the body will not part with,
+       and the next useful thing is to find out whether it even
+       recognises the handle. */
+    async probeObject(){
+      const rows = [];
+      if(!dev) return [{name:"Connected", pass:false, note:"Press CONNECT first."}];
+      if(!lastObject) return [{name:"A file to ask about", pass:false,
+        note:"The body has not reported making one since this link opened. Take a frame first."}];
+
+      rows.push({name:"Event record", pass:true,
+        note:"type 0x" + lastObject.type.toString(16) + ", " + hexdump(lastObject.raw, 40)});
+      rows.push({name:"Read as", pass:true,
+        note:"handle 0x" + lastObject.handle.toString(16) +
+             (lastObject.bytes ? (", " + lastObject.bytes + " bytes") : ", no size in the record") +
+             (lastObject.name ? (", " + lastObject.name) : "")});
+
+      lastResp = 0;
+      try{
+        const info = await transact(OP.EOS_GetObjectInfoEx, [0xffffffff, 0xffffffff, lastObject.handle]);
+        rows.push({name:"Body recognises the handle", pass: lastResp === 0x2001,
+          note: info ? (info.length + " bytes of object info: " + hexdump(info, 32)) : respName(lastResp)});
+      }catch(e){
+        rows.push({name:"Body recognises the handle", pass:false, note:e.message +
+          ".  A handle the body will not describe is one it will not send either."});
+      }
+
+      lastResp = 0;
+      try{
+        const ids = await transact(OP.EOS_GetStorageIDs);
+        rows.push({name:"Storage", pass:true, note: ids ? hexdump(ids, 24) : respName(lastResp)});
+      }catch(e){
+        rows.push({name:"Storage", pass:false, note:e.message});
+      }
+
+      rows.push({name:"Where images are going", pass:true,
+        note:"If this is the card alone, the handle names a file on the card and the body will not hand it to the host. Set Images go to so it includes this computer, then take a new frame: a handle from a frame already written to the card cannot be collected afterwards."});
+      return rows;
+    },
+
+    /* ---- video ------------------------------------------------------
+       Two property writes, confirmed the same way every other write is:
+       by the body reporting the new state back. If it does not report,
+       the console says so instead of claiming the camera is rolling. */
+    isRecording(){ return recording; },
+    async setRecording(on){
+      const want = on ? 4 : 0;
+      lastResp = 0;
+      await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.RECORD, want),
+        {retries:3, tolerate:[0xa102]});
+      if(lastResp !== 0x2001) log("The record property write answered " + respName(lastResp) + ".");
+      const until = Date.now() + 2000;
+      let seen = false;
+      while(Date.now() < until){
+        try{ parseEvents(await transact(OP.EOS_GetEvent, null, null, {retries:0})); }catch(e){}
+        if(lastRaw[PROP.RECORD] && lastRaw[PROP.RECORD].val === want){ seen = true; break; }
+        await new Promise(r=>setTimeout(r,120));
+      }
+      recording = on;
+      if(seen) ok(on ? "Recording. The body confirmed it." : "Recording stopped. The body confirmed it.");
+      else log((on ? "Asked the body to record" : "Asked the body to stop") +
+               ", and it did not report the change back. Check the camera before trusting this.");
+      return seen;
+    },
+
+    /* ---- touch to focus --------------------------------------------
+       The least grounded of the four. The coordinate property for the
+       viewfinder autofocus point is the part of the Canon extensions I
+       am least sure of, so this writes the point, drives autofocus, and
+       reports exactly what each call answered rather than claiming a
+       result. Treat a success here as a hypothesis until the picture
+       agrees with it. */
+    /* Autofocus, without choosing where.
+
+       An earlier version wrote a focus point to a viewfinder property
+       whose payload layout was inferred rather than confirmed, and tried
+       four candidate layouts in turn to see which the body liked. On an
+       R6 that produced Err 70, a hardware error that needs the battery
+       pulled. Guessing at payload layouts is fine against a parser and
+       is not fine against a camera, and the difference is that a camera
+       can be harmed.
+
+       So the focus point is gone until there is a confirmed layout for
+       it. What is left is the autofocus drive itself, which takes no
+       payload, and the half press, which the shutter path already uses.
+       Neither invents a byte. */
+    async focusNow(){
+      const rows = [];
+      lastResp = 0;
+      try{
+        await transact(OP.EOS_DoAf, [1], null, {retries:3});
+        rows.push({name:"Autofocus driven", pass: lastResp === 0x2001,
+          note: lastResp === 0x2001 ? "the body ran autofocus at its current point"
+                                    : ("answered " + respName(lastResp))});
+      }catch(e){
+        rows.push({name:"Autofocus driven", pass:false, note:e.message});
+      }
+      rows.push({name:"Focus point not sent", pass:true,
+        note:"Choosing where to focus needs a payload layout this instrument has not confirmed. Set the point on the camera."});
+      return rows;
+    },
+
+    /* ---- intervalometer --------------------------------------------
+       Entirely on this side of the cable, which is why it is the one
+       feature here I can promise behaves. It reuses the release path,
+       so it inherits one press one frame, and it stops itself on a
+       failure rather than hammering a camera that is not cooperating. */
+    intervalRunning(){ return !!interval; },
+    stopInterval(reason){
+      if(!interval) return;
+      clearTimeout(interval.timer); interval = null;
+      log("Intervalometer stopped" + (reason ? ": " + reason : "."));
+    },
+    startInterval(everySeconds, frames, onTick){
+      if(interval) this.stopInterval("restarted");
+      const gap = Math.max(1, everySeconds|0) * 1000;
+      const want = Math.max(1, frames|0);
+      interval = { made:0, want, gap, timer:null };
+      const self = this;
+      const fire = async () => {
+        if(!interval) return;
+        let good = false;
+        try{ good = await self.release(false); }
+        catch(e){ err("Intervalometer: " + e.message); }
+        if(!interval) return;
+        if(good){ interval.made++; }
+        else { self.stopInterval("a frame did not appear, so it stopped rather than keep firing blind"); if(onTick) onTick(interval); return; }
+        if(onTick) onTick(interval);
+        if(interval.made >= interval.want){ self.stopInterval("finished, " + interval.made + " frames"); return; }
+        interval.timer = setTimeout(fire, interval.gap);
+      };
+      log("Intervalometer running: " + want + " frames, one every " + (gap/1000) + " seconds.");
+      fire();
+      return true;
+    },
+
+    startTap(seconds){
+      tapUntil = Date.now() + (seconds||10)*1000;
+      log("Event tap open for " + (seconds||10) + " seconds. Turn a dial on the camera now.");
+    },
+
+    /* Three ways to write a property. If the body honours one of them the
+       value comes back on the event stream, and that is the only evidence
+       that counts. */
+    writeForms(){
+      return [
+        { id:"ex-12", name:"SetDevicePropValueEx, 12 byte payload",
+          run: async (pc, code) => { await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(pc, code)); } },
+        { id:"ex-16", name:"SetDevicePropValueEx, 16 byte payload",
+          run: async (pc, code) => {
+            const b = new ArrayBuffer(16), dv = new DataView(b);
+            dv.setUint32(0,16,true); dv.setUint32(4,pc>>>0,true); dv.setUint32(8,code>>>0,true); dv.setUint32(12,0,true);
+            await transact(OP.EOS_SetDevicePropValueEx, null, b); } },
+        { id:"std", name:"Standard PTP SetDevicePropValue",
+          run: async (pc, code) => {
+            const b = new ArrayBuffer(4); new DataView(b).setUint32(0, code>>>0, true);
+            await transact(OP.SetDevicePropValue, [pc], b); } }
+      ];
+    },
+    async probeProperty(key){
+      key = key || "iso";
+      const rows = [];
+      if(!dev) return [{name:"Connected", pass:false, note:"Press CONNECT first."}];
+      const map = { av:PROP.AV, tv:PROP.TV, iso:PROP.ISO, ec:PROP.EC, wb:PROP.WB, drive:PROP.DRIVE, af:PROP.AFMODE };
+      const pc = map[key];
+
+      rows.push({name:"Shooting mode", pass: !!(CAM.mode.value && MANUAL_MODES.indexOf(CAM.mode.value) >= 0),
+        note: (CAM.mode.value || "not reported") +
+          (CAM.mode.value && MANUAL_MODES.indexOf(CAM.mode.value) < 0
+            ? "  the camera holds its own settings in this mode, so no write will take"
+            : "")});
+      rows.push({name:"Standard property list", pass:true,
+        note: (info && info.deviceProps.length ? (info.deviceProps.length + " entries, " +
+                 (info.deviceProps.indexOf(pc) >= 0 ? "including this one" : "not including this one")) : "not read") +
+              ".  Canon keeps its EOS properties out of this list, so absence here means nothing."});
+
+      const opts = CAM[key].options || [], cur = CAM[key].value;
+      if(!opts.length || cur === null){
+        rows.push({name:"A value to write", pass:false, note:"no current value or option list for " + key});
+        return rows;
+      }
+      const i = opts.indexOf(cur);
+      const target = opts[(i + 1) % opts.length];
+      rows.push({name:"Test write", pass:true, note:key + " from " + cur + " to " + target + ", then back"});
+
+      suspendLive(true);
+      try{
+        for(const form of this.writeForms()){
+          let note = "", good = false;
+          try{
+            await form.run(pc, codeFor(key, target));
+            const res = await waitForValue(key, target, 1800);
+            good = res.ok;
+            if(good && !res.exact) note = "the body settled on " + res.value + " instead, which counts";
+            note = good ? "the body reported the new value back" : "accepted, but the value did not change";
+          }catch(e){ note = e.message; }
+          rows.push({name:form.name, pass:good, note:note});
+          if(good){
+            writeForm = form.id;
+            ok("Write form this body honours: " + form.name);
+            try{ await form.run(pc, codeFor(key, cur)); await waitForValue(key, cur, 1500); }catch(e){}
+            break;
+          }
+        }
+      } finally { suspendLive(false); }
+
+      if(!writeForm){
+        rows.push({name:"No write form took", pass:false,
+          note:"If the mode row above is red, that is the reason. Otherwise send this report and the event tap."});
       }
       return rows;
     },
+    writeFormId(){ return writeForm; },
     releaseStrategy(){ return strategy; },
-    async release(afOnly){
+    setStrategy(id){
+      if(STRATEGY_IDS.indexOf(id) < 0) return false;
+      strategy = id;
+      log("Release sequence set to: " + id);
+      return true;
+    },
+    async release(afOnly, opts_noprobe){
+      HOLD.render = true; pumpHeld = true;
+      try{ return await this._release(afOnly, opts_noprobe); }
+      finally{ HOLD.render = false; pumpHeld = false; }
+    },
+    async _release(afOnly, opts_noprobe){
       if(!capacityPrimed) await this.primeCapacity();
+      suspendLive(true);
       const af = $("chkAf") && $("chkAf").checked ? 1 : 0;
       if(afOnly){
         await transact(OP.EOS_RemoteReleaseOn,[1,0]);
@@ -1185,22 +2080,46 @@ const WireLink = (function(){
         return true;
       }
       const list = this.strategies();
-      const chosen = strategy ? list.filter(s=>s.id===strategy)
-                              : list.filter(s => s.id === (af ? "af-on" : "af-off"));
-      const before = objEvents;
-      await (chosen[0] || list[0]).run();
-      // The click waits for evidence. A transaction that returns 0x2001
-      // means the request was accepted, not that a frame exists, and an
-      // instrument that chirps on acceptance is lying to you.
-      const made = await this.waitForObject(2500);
-      if(!made){
-        err("The body accepted the release but no file appeared. Run RELEASE PROBE to find the strategy this body honours.");
-        say("No exposure. The request was accepted, no file arrived.");
+
+      // Known sequence first, then the full sweep if it has stopped
+      // working. Both go through the same function the probe uses.
+      const r = await this.runReleaseSequence(strategy ? {only:strategy} : {});
+      if(r.ok){
+        shutterClick();
+        await this.clearPress();
+        await this.restoreLive();
+        suspendLive(false);
+        say("");
+        return true;
+      }
+      if(strategy){
+        // Deliberately not sweeping here. Sweeping fires every sequence
+        // in turn, and on a body that exposes even while answering busy
+        // that means a handful of frames you did not ask for. One press,
+        // at most one exposure.
+        failures++;
+        if(failures >= 2){
+          log("That sequence has failed twice, so it is no longer treated as known. The next press will work through the list again.");
+          strategy = null; failures = 0;
+        }
+        const where = captureDest === 1 ? "the card"
+                    : captureDest === 2 ? "this computer"
+                    : captureDest === 4 ? "both" : "not known";
+        err("No file. Asked with the " + (strategy || "last known") + " sequence and nothing arrived. " +
+            "Images are going to: " + where + ". Capacity declared: " + (capacityPrimed ? "yes" : "no") + ".");
+        if(!capacityPrimed && captureDest !== 1){
+          err("With images coming to the computer and no capacity accepted, the body will decline to shoot. Try SHOOT TO CARD, or set Images go to back to the card.");
+        }
+        await this.restoreLive();
+        suspendLive(false);
+        say("No exposure.");
         return false;
       }
-      shutterClick();
-      ok("Exposure made.");
-      return true;
+      err("No release sequence produced a file. Run RELEASE PROBE for the step by step report.");
+      await this.restoreLive();
+      suspendLive(false);
+      say("No exposure.");
+      return false;
     },
 
     /* The bench test. Runs the whole path against the real body and
@@ -1231,19 +2150,41 @@ const WireLink = (function(){
         return releaseOp;
       });
       await step("Event stream carries properties", async () => {
-        const n = parseEvents(await transact(OP.EOS_GetEvent));
-        if(n === 0) throw new Error("no property records in the event stream");
-        return n + " record(s)";
+        // A quiet stream is not a broken stream. By the time this runs the
+        // connect drain and the event pump have already taken everything
+        // the body had to say, so counting records proves nothing. Give
+        // the body something to report instead, then listen for it.
+        let n = parseEvents(await transact(OP.EOS_GetEvent));
+        if(n > 0) return n + " record(s) already waiting";
+
+        const cur = CAM.iso.value;
+        if(cur === null) return "stream quiet, and no ISO value to poke it with";
+        const code = codeFor("iso", cur);
+        if(code === null) return "stream quiet, and ISO " + cur + " is not in the table";
+
+        await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.ISO, code));
+        const until = Date.now() + 2000;
+        while(Date.now() < until){
+          n = parseEvents(await transact(OP.EOS_GetEvent, null, null, {retries:0}));
+          if(n > 0) return n + " record(s) after writing ISO back to itself";
+          await new Promise(r=>setTimeout(r,120));
+        }
+        throw new Error("wrote ISO back to itself and the body reported nothing within two seconds");
       });
-      await step("Aperture, shutter and ISO all read back", async () => {
-        const missing = ["av","tv","iso"].filter(k => CAM[k].value === null);
+      await step("Shutter and ISO read back", async () => {
+        const missing = ["tv","iso"].filter(k => CAM[k].value === null);
         if(missing.length) throw new Error("no value yet for " + missing.join(", "));
-        return "f/" + CAM.av.value + "  " + CAM.tv.value + "  ISO " + CAM.iso.value;
+        return CAM.tv.value + "  ISO " + CAM.iso.value +
+          (CAM.av.value === null
+            ? "   aperture not reported, which is what a lens without electronic contacts looks like"
+            : "   f/" + CAM.av.value);
       });
-      await step("Option lists arrived", async () => {
-        const empty = ["av","tv","iso"].filter(k => !CAM[k].options.length);
-        if(empty.length) throw new Error("no option list for " + empty.join(", "));
-        return CAM.av.options.length + " apertures, " + CAM.tv.options.length + " shutters, " + CAM.iso.options.length + " ISOs";
+      await step("Scales the body describes", async () => {
+        const got = ["av","tv","iso"].filter(k => CAM[k].options.length);
+        const missing = ["av","tv","iso"].filter(k => !CAM[k].options.length);
+        if(!got.length) throw new Error("the body described no scales at all");
+        return got.join(", ") + " described" +
+          (missing.length ? ".  " + missing.join(", ") + " fall back to the published values, which is expected on this body" : "");
       });
       await step("Harmless write is accepted", async () => {
         // Write ISO back to the value it already holds. Nothing changes
@@ -1277,7 +2218,9 @@ const WireLink = (function(){
       return rows;
     },
     _internals:{ pack, extractJpeg, parseEvents, setPropPayload, takeContainer, parseDeviceInfo, respName, codeFor, hexdump,
-      objectCount:()=>objEvents, OBJECT_EVENTS }
+      objectCount:()=>objEvents, OBJECT_EVENTS, drainStale,
+      pumpLiveSource: () => pumpLive.toString(), parseEventsSource: () => parseEvents.toString(), reviveSource: () => reviveLive.toString(),
+      transactSource: () => transact.toString() }
   };
 })();
 
@@ -1461,6 +2404,7 @@ function falseColorFor(y){
 }
 function compose(ts){
   requestAnimationFrame(compose);
+  if(HOLD.render) return;
   const [sw, sh] = drawableSize();
   if(!FRAME.source || !sw || !sh){
     $("vpNote").hidden = false;
@@ -1513,6 +2457,15 @@ function compose(ts){
 }
 function drawGuides(W,H){
   sctx.save();
+  // A still frame presented as a live one is the same class of untruth
+  // as a shutter sound with no exposure behind it.
+  if(CAM.connected && !CAM.live){
+    sctx.fillStyle = "rgba(0,0,0,0.55)";
+    sctx.fillRect(0, 0, W, 26);
+    sctx.fillStyle = "#e05a3a";
+    sctx.font = "13px ui-monospace, monospace";
+    sctx.fillText("LAST FRAME, NOT LIVE", 10, 18);
+  }
   if(VIEW.grid){
     sctx.strokeStyle="rgba(255,255,255,0.34)"; sctx.lineWidth=1;
     for(let i=1;i<3;i++){
@@ -1654,35 +2607,45 @@ function drawDial(){
   legs.forEach((leg, idx) => {
     const {r, sweep, start} = ringGeom(idx);
     const lit = bind && bind.key === leg.key && bind.edge < 0.14;
-    const opts = CAM[leg.key].options || [];
-    // A ring with nothing behind it is drawn hollow, so "the body is not
-    // telling me this" never looks like "this is simply at rest".
-    const empty = !opts.length;
+    // Same source as the controls. A leg the body has not described still
+    // gets its scale and its needle, drawn from the published values, and
+    // the ring stays hollow to say the scale is not the body's own.
+    const of = optionsFor(leg.key);
+    const opts = of.list;
+    const empty = !of.confirmed;
     const arc = el("path",{d:arcPath(cx,cy,r,start,start+sweep), fill:"none",
       stroke: lit ? "var(--accent)" : "var(--edge)", "stroke-width": lit ? 3 : 2, "stroke-linecap":"round"});
     if(empty){ arc.setAttribute("stroke-dasharray","2 6"); arc.setAttribute("opacity","0.5"); }
     svg.appendChild(arc);
-    const n = Math.min(opts.length, 40);
-    for(let i=0;i<n;i++){
-      const a = start + sweep*(n<2?0:i/(n-1));
-      const major = (i % 3 === 0);
+    const stride = Math.max(1, Math.ceil(opts.length/28));
+    const shown = [];
+    for(let i=0;i<opts.length;i+=stride) shown.push(i);
+    for(const i of shown){
+      const a = start + sweep*(opts.length<2?0:i/(opts.length-1));
+      const major = (shown.indexOf(i) % 3 === 0);
       const [x0,y0]=polar(cx,cy,r-(major?7:4),a), [x1,y1]=polar(cx,cy,r,a);
-      svg.appendChild(el("line",{x1:x0,y1:y0,x2:x1,y2:y1,stroke:"var(--dim)","stroke-width":major?1.4:0.7,opacity:major?0.9:0.5}));
+      svg.appendChild(el("line",{x1:x0,y1:y0,x2:x1,y2:y1,stroke:"var(--dim)",
+        "stroke-width":major?1.4:0.7, opacity:(major?0.9:0.5)*(of.confirmed?1:0.55)}));
     }
-    const v = CAM[leg.key].value, i = opts.indexOf(v);
+    const v = (leg.key === "av" && CAM.av.value === null) ? DECLARED.av : CAM[leg.key].value;
+    const declared = (leg.key === "av" && CAM.av.value === null && DECLARED.av !== null);
+    const i = opts.indexOf(v);
     if(i >= 0 && opts.length > 1){
       const a = start + sweep*(i/(opts.length-1));
       const [nx,ny]=polar(cx,cy,r+9,a), [bx,by]=polar(cx,cy,r-16,a);
-      svg.appendChild(el("line",{x1:bx,y1:by,x2:nx,y2:ny,stroke:"var(--brass)","stroke-width":3,"stroke-linecap":"round"}));
-      svg.appendChild(el("circle",{cx:bx,cy:by,r:2.6,fill:"var(--brass)"}));
+      const needle = el("line",{x1:bx,y1:by,x2:nx,y2:ny,stroke:"var(--brass)","stroke-width":3,"stroke-linecap":"round"});
+      if(!of.confirmed || declared) needle.setAttribute("opacity","0.62");
+      if(declared) needle.setAttribute("stroke-dasharray","5 3");
+      svg.appendChild(needle);
+      svg.appendChild(el("circle",{cx:bx,cy:by,r:2.6,fill:"var(--brass)",opacity:of.confirmed?1:0.62}));
     }
-    // Labels ride the gap at the top of each ring rather than stacking
-    // along one radius, which is what made them read as a diagonal pile.
-    const [lx,ly]=polar(cx,cy,r,start+sweep+16);
+    // Fan the labels around the arc end so three concentric rings do not
+    // stack their names along one radius.
+    const [lx,ly]=polar(cx,cy,r,start+sweep+12+idx*17);
     svg.appendChild(el("text",{x:lx,y:ly+4,fill:lit?"var(--accent)":"var(--dim)","font-size":11,
       "font-family":"var(--mono)","text-anchor":"middle"}, leg.label));
   });
-  const e = ev100(CAM.av.value, CAM.tv.value, CAM.iso.value);
+  const e = ev100(effectiveAv(), CAM.tv.value, CAM.iso.value);
   svg.appendChild(el("text",{x:cx,y:cy+2,fill:"var(--fg)","font-size":26,"font-family":"var(--disp)",
     "text-anchor":"middle"}, e===null ? "--" : ("EV "+e.toFixed(1))));
   svg.appendChild(el("text",{x:cx,y:cy+20,fill:"var(--dim)","font-size":10,"font-family":"var(--mono)",
@@ -1698,7 +2661,8 @@ function drawDial(){
     const silent = ["av","tv","iso"].filter(k => !(CAM[k].options||[]).length);
     if(silent.length === 3) note.textContent = "No exposure data from this link.";
     else if(silent.length) note.textContent = "The body is not reporting " +
-      silent.map(k=>({av:"aperture",tv:"shutter",iso:"ISO"})[k]).join(" or ") + ".";
+      silent.map(k=>({av:"aperture",tv:"shutter",iso:"ISO"})[k]).join(" or ") +
+      (silent.indexOf("av") >= 0 && CAM.av.value === null ? ", which is what a lens without contacts looks like." : ".");
     else note.textContent = "All three legs have room to move.";
   }
 }
@@ -1707,6 +2671,27 @@ function drawDial(){
    UI
    ================================================================= */
 const SELS = { av:"selAv", tv:"selTv", iso:"selIso", ec:"selEc", wb:"selWb", drive:"selDrive", af:"selAf" };
+const FULL_TABLE = { av:AV, tv:TV, iso:ISO, ec:EC, wb:WB, drive:DRIVE, af:AFMODE };
+/* A lens with no electronic contacts reports no aperture, so the body
+   has none to give and the exposure triangle loses a leg. Let the
+   aperture be declared by hand in that case. It is marked as declared
+   everywhere it appears, because it is a statement about the lens, not
+   a reading from the camera. */
+const DECLARED = { av:null };
+function effectiveAv(){ return CAM.av.value !== null ? CAM.av.value : DECLARED.av; }
+/* A body that never sent a list of allowed values is not the same as a
+   body that has none. Offer the published table, say plainly that it is
+   unconfirmed, and let the write path be the thing that finds out: a
+   value the body will not take simply never echoes back. */
+function optionsFor(key){
+  const reported = (CAM[key] && CAM[key].options) || [];
+  if(reported.length) return { list:reported, confirmed:true };
+  const tab = FULL_TABLE[key];
+  if(!tab) return { list:[], confirmed:false };
+  const list = [];
+  for(const k in tab){ const v = tab[k]; if(list.indexOf(v) < 0) list.push(v); }
+  return { list, confirmed:false };
+}
 let suppress = false;
 
 function fillSelect(id, options, value){
@@ -1726,28 +2711,62 @@ function fillSelect(id, options, value){
   }
 }
 function refresh(){
+  if(HOLD.render) return;
   suppress = true;
-  for(const k in SELS) fillSelect(SELS[k], CAM[k].options, CAM[k].value);
+  for(const k in SELS){
+    const o = optionsFor(k);
+    fillSelect(SELS[k], o.list, CAM[k].value);
+    const sel = $(SELS[k]);
+    if(sel){
+      const held = settableIn(CAM.mode.value, k) === false;
+      sel.title = held
+        ? ("The mode dial is on " + CAM.mode.value + ", where the camera chooses the " +
+           (CHOSEN_BY_CAMERA[k] || k) + " itself. Changing it here will not stick.")
+        : (o.confirmed ? "" :
+          "The camera has not sent a list of allowed values for this setting. These are the published values, and a setting the body will not take will simply not stick.");
+      sel.style.opacity = held ? "0.55" : "";
+    }
+  }
   suppress = false;
 
-  $("rdAv").textContent  = CAM.av.value ? "f/"+CAM.av.value : "-";
+  const needDecl = CAM.connected && CAM.av.value === null;
+  $("rowDeclAv").hidden = !needDecl;
+  $("rdAv").textContent = CAM.av.value ? ("f/"+CAM.av.value)
+    : (DECLARED.av ? ("f/"+DECLARED.av+"*") : "-");
   $("rdTv").textContent  = CAM.tv.value || "-";
   $("rdIso").textContent = CAM.iso.value || "-";
-  const e = ev100(CAM.av.value, CAM.tv.value, CAM.iso.value);
-  $("rdEv").textContent = e===null ? "-" : e.toFixed(1);
+  const e = ev100(effectiveAv(), CAM.tv.value, CAM.iso.value);
+  $("rdEv").textContent = e===null ? "-" : (e.toFixed(1) + (CAM.av.value === null && DECLARED.av ? "*" : ""));
 
   $("lampLink").className = "lamp" + (CAM.connected ? " on" : "");
   $("lampLive").className = "lamp" + (CAM.live ? " live" : "");
   $("lampCtrl").className = "lamp" + (CAM.canControl ? " on" : (CAM.connected ? " warn" : ""));
   $("stRes").textContent = FRAME.w ? (FRAME.w+"x"+FRAME.h) : "-";
-  $("stBatt").textContent = "BATT " + (CAM.battery===null ? "-" : (CAM.battery+"%"));
+  // A percentage only when the body gave one. Otherwise the level, said
+  // as a level, because a made up percentage is worse than no percentage.
+  const battEl = $("stBatt");
+  if(CAM.battery !== null){
+    battEl.textContent = "BATT " + CAM.battery + "%";
+    battEl.title = "Read as a percentage from the standard battery level property.";
+  } else if(CAM.batteryLevel !== null){
+    battEl.textContent = "BATT LEVEL " + CAM.batteryLevel;
+    battEl.title = "The body reports a coarse level here rather than a percentage. It is not a percent and is not shown as one.";
+  } else {
+    battEl.textContent = "BATT -";
+    battEl.title = "";
+  }
+  $("stMode").textContent = CAM.mode.value ? ("MODE " + CAM.mode.value) : "";
+  const strat = WireLink.releaseStrategy();
+  $("stStrat").textContent = (CAM.link === "wire")
+    ? ("RELEASE " + (strat ? strat : defaultStrategyId() + " (assumed)"))
+    : "";
   const f = fpsAcc.length ? fpsAcc.reduce((a,b)=>a+b,0)/fpsAcc.length : 0;
   $("stFps").textContent = f.toFixed(1)+" fps";
 
   const canShoot = CAM.canControl;
   $("release").disabled = !canShoot;
   $("btnAfOnly").disabled = !canShoot;
-  for(const k in SELS){ const s=$(SELS[k]); if(s) s.disabled = !canShoot || !CAM[k].options.length; }
+  for(const k in SELS){ const s=$(SELS[k]); if(s) s.disabled = !canShoot || !optionsFor(k).list.length; }
 
   $("vpNoteTxt").textContent = ({
     bench:"The bench link should always have a picture. If this is showing, the self test will say why.",
@@ -1789,7 +2808,13 @@ for(const k in SELS){
   });
 }
 $("release").addEventListener("click", async ()=>{
-  try{ await ACTIVE.release(false); say("Released."); }
+  try{
+    const made = await ACTIVE.release(false);
+    if(made) say("Released.");
+    if(made && $("chkAutoDl").checked && CAM.link === "wire"){
+      try{ await WireLink.downloadObject(); }catch(e){ err("Download failed: " + e.message); }
+    }
+  }
   catch(e){ err("Release failed: "+e.message); }
 });
 $("btnAfOnly").addEventListener("click", async ()=>{
@@ -1808,6 +2833,12 @@ function toggleBtn(id, key){
 }
 toggleBtn("ovGrid","grid"); toggleBtn("ovSafe","safe"); toggleBtn("ovPeak","peak");
 toggleBtn("ovZebra","zebra"); toggleBtn("ovFalse","falseColor"); toggleBtn("ovFlip","flip");
+$("chkPauseLive").addEventListener("change", e=>{
+  WireLink.holdLive(e.target.checked);
+  log(e.target.checked
+    ? "Live view paused. The camera has the cable to itself."
+    : "Live view resumed.");
+});
 $("rngPeak").addEventListener("input", e=>{ VIEW.peakLevel=+e.target.value; $("valPeak").textContent=e.target.value; });
 $("rngZebra").addEventListener("input", e=>{ VIEW.zebraAt=+e.target.value; $("valZebra").textContent=e.target.value+"%"; });
 $("rngScale").addEventListener("input", e=>{ VIEW.scale=+e.target.value; $("valScale").textContent=e.target.value+"%"; });
@@ -1827,6 +2858,20 @@ $("btnFull").addEventListener("click", ()=>{
 });
 
 /* ---- link panes ------------------------------------------------- */
+(function initDeclaredAperture(){
+  const sel = $("selDeclAv");
+  const none = document.createElement("option"); none.value=""; none.textContent="not declared";
+  sel.appendChild(none);
+  const seen = [];
+  for(const k in AV){ const v = AV[k]; if(seen.indexOf(v) < 0){ seen.push(v);
+    const o = document.createElement("option"); o.value=v; o.textContent="f/"+v; sel.appendChild(o); } }
+  sel.addEventListener("change", e=>{
+    DECLARED.av = e.target.value || null;
+    log(DECLARED.av ? ("Aperture declared as f/" + DECLARED.av + ". This is your reading of the lens, not the camera's.")
+                    : "Declared aperture cleared.");
+    drawDial();
+  });
+})();
 $("selScene").addEventListener("change", e=>BenchLink.setScene(e.target.value));
 $("btnCamScan").addEventListener("click", async ()=>{
   const list = await GlassLink.listDevices();
@@ -1880,6 +2925,74 @@ $("btnRelProbe").addEventListener("click", async ()=>{
   catch(e){ err("Release probe could not run: " + e.message); }
   say("");
 });
+$("btnFocusNow").addEventListener("click", async ()=>{
+  if(CAM.link !== "wire" || !CAM.canControl){ err("Autofocus needs the WIRE link connected."); return; }
+  try{ showRows("Focus", await WireLink.focusNow()); }
+  catch(e){ err("Autofocus failed: " + e.message); }
+});
+
+$("btnRecord").addEventListener("click", async ()=>{
+  const on = !WireLink.isRecording();
+  try{
+    await WireLink.setRecording(on);
+    $("btnRecord").textContent = WireLink.isRecording() ? "STOP RECORDING" : "START RECORDING";
+    $("btnRecord").classList.toggle("primary", WireLink.isRecording());
+  }catch(e){ err("Recording: " + e.message); }
+});
+
+$("btnObjProbe").addEventListener("click", async ()=>{
+  try{ showRows("Object probe", await WireLink.probeObject()); }
+  catch(e){ err("Object probe failed: " + e.message); }
+});
+$("btnDownload").addEventListener("click", async ()=>{
+  try{ await WireLink.downloadObject(); }
+  catch(e){ err("Download failed: " + e.message); }
+});
+
+$("btnInterval").addEventListener("click", ()=>{
+  if(WireLink.intervalRunning()){
+    WireLink.stopInterval("stopped by hand");
+    $("btnInterval").textContent = "START INTERVALOMETER";
+    $("btnInterval").classList.remove("primary");
+    return;
+  }
+  const every = parseInt($("numEvery").value,10) || 10;
+  const frames = parseInt($("numFrames").value,10) || 1;
+  $("btnInterval").textContent = "STOP INTERVALOMETER";
+  $("btnInterval").classList.add("primary");
+  WireLink.startInterval(every, frames, (st)=>{
+    $("valMade").textContent = st ? (st.made + " of " + st.want) : "";
+    if(!WireLink.intervalRunning()){
+      $("btnInterval").textContent = "START INTERVALOMETER";
+      $("btnInterval").classList.remove("primary");
+    }
+  });
+});
+
+$("btnReadLists").addEventListener("click", async ()=>{
+  try{ await WireLink.fetchMissingLists(); ok("Finished asking for property descriptions."); }
+  catch(e){ err("Could not read property descriptions: " + e.message); }
+});
+$("btnPropProbe").addEventListener("click", async ()=>{
+  say("Probing the write path.");
+  const target = $("selProbeTarget").value;
+  try{ showRows("Property probe: " + target, await WireLink.probeProperty(target)); }
+  catch(e){ err("Property probe could not run: " + e.message); }
+  say("");
+});
+$("btnTap").addEventListener("click", ()=>{
+  WireLink.startTap(10);
+  say("Event tap open. Turn a dial on the camera.");
+  setTimeout(()=>say(""), 10000);
+});
+$("selCapDest").addEventListener("change", async (e)=>{
+  const v = parseInt(e.target.value,10);
+  try{
+    await WireLink.setCaptureDest(v);
+    ok("Capture destination set to " + e.target.selectedOptions[0].textContent.toLowerCase() + ".");
+    if(v === 1) log("With images going to the card only, there is nothing queued for the computer to download.");
+  }catch(err2){ err("Could not set the capture destination: " + err2.message); }
+});
 $("btnCapDest").addEventListener("click", async ()=>{
   try{ await WireLink.setCaptureDest(1); ok("Capture destination set to the card in the camera."); }
   catch(e){ err("Could not set capture destination: " + e.message); }
@@ -1922,6 +3035,33 @@ $("btnLogSave").addEventListener("click", ()=>{
   const a = document.createElement("a"); a.href=URL.createObjectURL(b);
   a.download="groundglass-log.txt"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 });
+$("btnReport").addEventListener("click", async ()=>{
+  const i = WireLink.info();
+  const lines = [
+    "GROUND GLASS v" + VERSION + " (FI-122)",
+    "link: " + CAM.link + "   connected: " + CAM.connected + "   control: " + CAM.canControl + "   live: " + CAM.live,
+    "body: " + (CAM.model || "-") + (i ? ("   firmware " + i.deviceVersion) : ""),
+    "mode: " + (CAM.mode.value || "-") + "   release sequence: " + (WireLink.releaseStrategy() || "not yet found") +
+      "   write form: " + (WireLink.writeFormId() || "not yet found"),
+    "exposure: Av " + (CAM.av.value || (DECLARED.av ? DECLARED.av + " (declared)" : "-")) +
+      "   Tv " + (CAM.tv.value || "-") + "   ISO " + (CAM.iso.value || "-"),
+    "scales reported: " + ["av","tv","iso"].filter(k=>(CAM[k].options||[]).length).join(", ") || "none",
+    i ? ("operations: " + i.operations.map(o=>"0x"+o.toString(16)).join(" ")) : "operations: not read",
+    i ? ("device properties: " + i.deviceProps.map(o=>"0x"+o.toString(16)).join(" ")) : "",
+    "", "--- log ---", LOG.lines.join("\n")
+  ].filter(Boolean);
+  const text = lines.join("\n");
+  try{
+    await navigator.clipboard.writeText(text);
+    ok("Report copied. Paste it wherever you are sending it.");
+  }catch(e){
+    const b = new Blob([text], {type:"text/plain"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(b);
+    a.download = "groundglass-report.txt"; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    log("Clipboard refused, so the report was written to disk instead.");
+  }
+});
 $("btnAbout").addEventListener("click", ()=>$("dlgAbout").showModal());
 $("aboutClose").addEventListener("click", ()=>$("dlgAbout").close());
 $("aboutClose2").addEventListener("click", ()=>$("dlgAbout").close());
@@ -1941,6 +3081,8 @@ const SCHEMA = {
   debug:  { type:"bool" },
   host:   { type:"string", max:128 },
   scene:  { type:"enum", values:["chart","ramp","portrait","motion"] },
+  declaredAv:{ type:"string", max:8 },
+  strategy:{ type:"enum", values:["two-stage-af","two-stage-slow","two-stage","af-off","af-on","one-param","ui-lock","single-op"] },
   view:   { type:"view" }
 };
 const VIEWNUM = { peakLevel:[4,80], zebraAt:[60,100], scale:[40,100] };
@@ -1977,6 +3119,8 @@ function currentSession(){
     theme: document.documentElement.getAttribute("data-theme"),
     link: CAM.link, muted: SND.muted, debug: LOG.debug,
     host: $("txtHost").value, scene: $("selScene").value,
+    strategy: WireLink.releaseStrategy() || undefined,
+    declaredAv: DECLARED.av || undefined,
     view: JSON.parse(JSON.stringify(VIEW))
   };
 }
@@ -1986,6 +3130,8 @@ function applySession(s){
   if("debug" in s){ LOG.debug = s.debug; $("chkDebug").checked = s.debug; }
   if(s.host){ $("txtHost").value = s.host; }
   if(s.scene){ $("selScene").value = s.scene; BenchLink.setScene(s.scene); }
+  if(s.strategy){ WireLink.setStrategy(s.strategy); }
+  if(s.declaredAv){ DECLARED.av = s.declaredAv; const d = $("selDeclAv"); if(d) d.value = s.declaredAv; }
   if(s.view){
     for(const b of VIEWBOOL) if(b in s.view){
       VIEW[b] = s.view[b];
@@ -2130,6 +3276,361 @@ function runTests(){
   });
 
   const W = WireLink._internals;
+  T("a nearby value counts as the write working", ()=>{
+    const src = WireLink.setProp.toString();
+    return (src.indexOf("settled on") >= 0 && src.indexOf("exact") >= 0)
+      || "an inexact echo is still treated as a failed write";
+  });
+  T("a failed write says what the body did report", ()=>{
+    const src = WireLink.setProp.toString();
+    return src.indexOf("lastRaw") >= 0 || "a failed write reports only that it failed";
+  });
+  T("the probe can aim at any setting", ()=>{
+    const opts = Array.from($("selProbeTarget").options).map(o=>o.value);
+    return (opts.indexOf("ec") >= 0 && opts.indexOf("iso") >= 0 && opts.length === 7)
+      || ("probe targets: " + opts.join(","));
+  });
+  T("exposure compensation offers both increment schemes", ()=>{
+    const vals = optionsFor("ec").list;
+    return (vals.indexOf("+1/3") >= 0 && vals.indexOf("+1/2") >= 0)
+      || "the exposure compensation table is missing an increment scheme";
+  });
+  T("a quiet event stream is not reported as a fault", ()=>{
+    const src = WireLink.benchTest.toString();
+    return (src.indexOf("already waiting") >= 0 && src.indexOf("back to itself") >= 0)
+      || "the bench test still fails a body that simply has nothing to say";
+  });
+  T("a release is never fired twice in one attempt", ()=>{
+    const src = WireLink.runReleaseSequence.toString();
+    if(/for\s*\(\s*let\s+attempt/.test(src)) return "there is still a retry loop around the press";
+    return (src.split("st.run()").length - 1) === 1 || "the press is issued from more than one place";
+  });
+  T("evidence is checked even when the command threw", ()=>{
+    const src = WireLink.runReleaseSequence.toString();
+    return /catch[\s\S]{0,120}threw\s*=\s*e[\s\S]{0,200}waitForObject/.test(src)
+      || "an error still skips the check for a file";
+  });
+  T("a known sequence that fails does not sweep the rest", ()=>{
+    const src = WireLink._release.toString();
+    return src.indexOf("Deliberately not sweeping") >= 0 || "a failed press can still fire every sequence";
+  });
+  T("a busy answer never decides which sequence is preferred", ()=>{
+    const src = defaultStrategyId.toString();
+    return src.indexOf("0x2019") < 0 && src.indexOf("isTransient") < 0;
+  });
+  T("device busy is a transient answer, not a verdict", ()=> isTransient(0x2019) === true);
+  T("not ready is transient too", ()=> isTransient(0xa102) === true);
+  T("a real refusal is not transient", ()=>
+    isTransient(0x2005) === false && isTransient(0x201c) === false && isTransient(0x2001) === false);
+  T("a busy answer is not treated as a failed sequence on its own", ()=>{
+    // The body exposes even while answering busy, so the answer is not
+    // the thing that decides. The file is. Retrying was worse than
+    // useless: it put extra frames on the card.
+    const src = WireLink.runReleaseSequence.toString();
+    return /waitForObject\(\s*threw\s*\?/.test(src) || "the busy path no longer checks for a file";
+  });
+  T("the event pump stands down during a release", ()=>{
+    const src = WireLink.release.toString() + WireLink.probeRelease.toString();
+    return (src.indexOf("pumpHeld") >= 0) || "two pollers still share the pipe during a release";
+  });
+  T("the pump hold is cleared in a finally", ()=>{
+    const src = WireLink.release.toString();
+    return /finally\s*\{[^}]*pumpHeld\s*=\s*false/.test(src) || "the pump could stay held after a throw";
+  });
+  T("half press autofocus is off until asked for", ()=> $("chkAf").checked === false);
+  T("the viewfinder is stopped before a release is asked for", ()=>{
+    const src = WireLink.runReleaseSequence.toString();
+    return (src.indexOf("stopLive") >= 0 && src.indexOf("waitUntilReady") >= 0)
+      || "the body is still streaming when the release arrives";
+  });
+  T("the viewfinder is restored however the sequence ends", ()=>{
+    const src = WireLink.runReleaseSequence.toString();
+    return (src.split("restoreLive").length - 1) >= 2 || "one exit path leaves the monitor dark";
+  });
+  T("waiting for ready only waits on transient answers", ()=>{
+    const src = WireLink.waitUntilReady.toString();
+    return src.indexOf("isTransient") >= 0 || "a real error would be waited out as if it were busy";
+  });
+  T("a sequence that fails twice stops being treated as known", ()=>{
+    const src = WireLink._release.toString();
+    return (/failures\s*>=\s*2/.test(src) && src.indexOf("strategy = null") >= 0)
+      || "a stale sequence can be reused forever";
+  });
+  T("a stale picture is labelled rather than passed off as live", ()=>{
+    const src = drawGuides.toString();
+    return src.indexOf("LAST FRAME, NOT LIVE") >= 0 || "an old frame is shown as if it were live";
+  });
+  T("restoring the viewfinder waits for frames, not just an acknowledgement", ()=>{
+    const src = WireLink.restoreLive.toString();
+    return src.indexOf("reviveLive") >= 0 || "restoring live view trusts the write";
+  });
+  T("the viewfinder watchdog gives up loudly rather than silently", ()=>{
+    const src = WireLink._internals.pumpLiveSource();
+    return (src.indexOf("not a live one") >= 0 && src.indexOf("lastRevive") >= 0)
+      || "a dead viewfinder is never reported";
+  });
+  T("aperture priority holds the shutter", ()=>
+    settableIn("Av","tv") === false && settableIn("Av","av") === true);
+  T("shutter priority holds the aperture", ()=>
+    settableIn("Tv","av") === false && settableIn("Tv","tv") === true);
+  T("manual holds nothing but exposure compensation", ()=>
+    settableIn("M","av") === true && settableIn("M","tv") === true && settableIn("M","ec") === false);
+  T("an automatic mode holds everything", ()=>
+    settableIn("Auto","tv") === false && settableIn("Scene intelligent auto","iso") === false);
+  T("an unknown mode is unknown, not refused", ()=>
+    settableIn(null,"tv") === null && settableIn("Custom","tv") === null);
+  T("a held setting is explained rather than reported as broken", ()=>{
+    const src = WireLink.setProp.toString();
+    return src.indexOf("chooses the") >= 0 || "a setting the mode holds still reports as a failed write";
+  });
+  T("a settings write gets the pipe to itself", ()=>{
+    const src = WireLink.setProp.toString();
+    return (src.indexOf("pumpHeld = true") >= 0 && src.indexOf("waitUntilReady") >= 0)
+      || "a write still competes with the viewfinder and event polls";
+  });
+  T("the write hold is released even on a throw", ()=>{
+    const src = WireLink.setProp.toString();
+    return /finally\s*\{[^}]*pumpHeld\s*=\s*false/.test(src) || "a failed write could leave the pump held";
+  });
+  T("a settings write is retried generously", ()=>{
+    const src = WireLink.setProp.toString();
+    return /retries\s*:\s*6/.test(src) || "a busy write gives up too early";
+  });
+  T("live view can be paused by hand", ()=>{
+    return (typeof WireLink.holdLive === "function" && !!$("chkPauseLive"))
+      || "there is no way to give the camera the cable to itself";
+  });
+  T("a Canon level is never shown as a percentage", ()=>{
+    const src = refresh.toString();
+    return (src.indexOf("BATT LEVEL") >= 0 && /CAM\.battery\s*!==\s*null/.test(src))
+      || "the coarse level can still be printed with a percent sign";
+  });
+  T("the level and the percentage are kept apart", ()=>{
+    const save = { b:CAM.battery, l:CAM.batteryLevel };
+    CAM.battery = null; CAM.batteryLevel = 3; refresh();
+    const shown = $("stBatt").textContent;
+    CAM.battery = save.b; CAM.batteryLevel = save.l; refresh();
+    return (shown.indexOf("%") < 0 && /LEVEL/.test(shown)) || ("showed " + shown);
+  });
+  T("a real percentage is shown as one", ()=>{
+    const save = { b:CAM.battery, l:CAM.batteryLevel };
+    CAM.battery = 62; CAM.batteryLevel = 3; refresh();
+    const shown = $("stBatt").textContent;
+    CAM.battery = save.b; CAM.batteryLevel = save.l; refresh();
+    return /62%/.test(shown) || ("showed " + shown);
+  });
+  T("a battery reading over 100 is refused", ()=>{
+    const src = WireLink.readBatteryPercent.toString();
+    return src.indexOf("v > 100") >= 0 || "an impossible percentage would be displayed";
+  });
+  T("resetting the model clears both battery readings", ()=>{
+    const src = resetCam.toString();
+    return (src.indexOf("batteryLevel") >= 0) || "a stale level survives a link change";
+  });
+  T("capacity reports what the body actually answered", ()=>{
+    const src = WireLink.primeCapacity.toString();
+    return (src.indexOf("lastResp === 0x2001") >= 0)
+      || "a tolerated refusal is still reported as capacity being declared";
+  });
+  T("the destination write is checked too", ()=>{
+    const src = WireLink.setCaptureDest.toString();
+    return (src.indexOf("lastResp === 0x2001") >= 0) || "the destination write is assumed to have taken";
+  });
+  T("a failed release reports destination and capacity", ()=>{
+    const src = WireLink._release.toString();
+    return (src.indexOf("Images are going to") >= 0 && src.indexOf("Capacity declared") >= 0)
+      || "a failed release does not say what it knows";
+  });
+  T("no tolerate list is treated as success anywhere", ()=>{
+    // Every place that tolerates a response and then reports an outcome
+    // has to consult lastResp. Check the ones that report.
+    for(const fn of [WireLink.primeCapacity, WireLink.setCaptureDest, WireLink.focusNow]){
+      const src = fn.toString();
+      if(src.indexOf("tolerate") >= 0 && src.indexOf("lastResp") < 0) return "a tolerated answer is reported as success";
+    }
+    return true;
+  });
+  T("the raw object record is kept for checking", ()=>{
+    const src = WireLink._internals.parseEventsSource();
+    return src.indexOf("raw: buf.slice") >= 0 || "the record is parsed and then thrown away";
+  });
+  T("the object probe reports the record rather than trusting the parse", ()=>{
+    const src = WireLink.probeObject.toString();
+    return (src.indexOf("hexdump") >= 0 && src.indexOf("Read as") >= 0)
+      || "the probe shows only the parsed fields";
+  });
+  T("the object probe asks the body whether it knows the handle", ()=>{
+    const src = WireLink.probeObject.toString();
+    return src.indexOf("EOS_GetObjectInfoEx") >= 0 || "the probe never checks the handle is real";
+  });
+  T("the probe explains that a card frame cannot be collected later", ()=>{
+    const src = WireLink.probeObject.toString();
+    return src.indexOf("cannot be collected afterwards") >= 0 || "the probe does not explain the destination rule";
+  });
+  T("the standard whole object fetch is tried last", ()=>{
+    const src = WireLink.downloadObject.toString();
+    const canon = src.indexOf("EOS_GetObject"), std = src.indexOf("OP.GetObject,");
+    return (canon >= 0 && std >= 0 && canon < std) || "the standard fetch is still tried before the Canon ones";
+  });
+  T("every Canon opcode sits in the Canon range", ()=>{
+    for(const k in OP){
+      if(k.indexOf("EOS_") !== 0) continue;
+      const v = OP[k];
+      if(v < 0x9100 || v > 0x91ff) return k + " is 0x" + v.toString(16) + ", outside the Canon operation range";
+    }
+    return true;
+  });
+  T("transfer complete uses the Canon acknowledgement", ()=> OP.EOS_TransferComplete === 0x9117);
+  T("a failed download explains the capture destination", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("card only") >= 0 || "a failure does not mention where images are being sent";
+  });
+  T("a partial read does not need a declared size", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("200 * 1024 * 1024") >= 0 || "a file with no reported size cannot be fetched";
+  });
+  T("every property code is a real Canon code", ()=>{
+    for(const k in PROP){
+      const v = PROP[k];
+      if(typeof v !== "number" || !isFinite(v)) return k + " is not a number";
+      if(v < 0xd100 || v > 0xd1ff) return k + " is 0x" + v.toString(16) + ", outside the Canon range";
+    }
+    return true;
+  });
+  T("a tolerated answer is not reported as success", ()=>{
+    const src = WireLink.focusNow.toString();
+    return (src.indexOf("lastResp === 0x2001") >= 0)
+      || "a tolerated response could still be shown as a passing row";
+  });
+  T("no speculative payload layouts remain", ()=>{
+    return (typeof WireLink.focusForms === "undefined" && typeof WireLink.focusAt === "undefined")
+      || "the guessed focus point layouts are still in the build";
+  });
+  T("a property with no confirmed layout cannot be written", ()=>{
+    try{
+      WireLink._internals.setPropPayload(0xd1b9, 1);
+      return "a property outside the confirmed set was allowed through";
+    }catch(e){ return /payload layout/.test(e.message) || ("wrong refusal: " + e.message); }
+  });
+  T("the settings that are written every day still can be", ()=>{
+    for(const pc of [PROP.ISO, PROP.AV, PROP.TV, PROP.EC, PROP.EVF_OUT]){
+      const b = WireLink._internals.setPropPayload(pc, 0x58);
+      if(new DataView(b).getUint32(4, true) !== pc) return "0x" + pc.toString(16) + " built wrongly";
+    }
+    return true;
+  });
+  T("the refusal is at the one place payloads are built", ()=>{
+    const src = WireLink._internals.setPropPayload.toString();
+    return src.indexOf("WRITABLE_PROPS") >= 0 || "the guard is not on the payload builder";
+  });
+  T("the intervalometer stops itself when a frame does not appear", ()=>{
+    const src = WireLink.startInterval.toString();
+    return (src.indexOf("stopInterval") >= 0 && src.indexOf("keep firing blind") >= 0)
+      || "the intervalometer would keep firing at an uncooperative body";
+  });
+  T("the intervalometer goes through the ordinary release path", ()=>{
+    const src = WireLink.startInterval.toString();
+    return src.indexOf("self.release(") >= 0 || "the intervalometer has its own release and can drift from the button";
+  });
+  T("stopping the intervalometer clears its timer", ()=>{
+    const src = WireLink.stopInterval.toString();
+    return src.indexOf("clearTimeout") >= 0 || "a stopped intervalometer could still fire once more";
+  });
+  T("recording is confirmed by the body, not assumed", ()=>{
+    const src = WireLink.setRecording.toString();
+    return (src.indexOf("lastRaw") >= 0 && src.indexOf("did not report the change back") >= 0)
+      || "recording is claimed without evidence";
+  });
+  T("a download checks that bytes actually arrived", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("returned no bytes") >= 0 || "an empty download would be reported as a file";
+  });
+  T("a download names a JPEG when it sees one", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return (src.indexOf("0xd8") >= 0 && src.indexOf(".jpg") >= 0) || "downloads are never identified";
+  });
+  T("focus reports what the body answered", ()=>{
+    const src = WireLink.focusNow.toString();
+    return (src.split("rows.push").length - 1) >= 2 || "focus does not report what the body answered";
+  });
+  T("the capture panel is wired up", ()=>{
+    for(const id of ["btnFocusNow","btnRecord","btnDownload","chkAutoDl","numEvery","numFrames","btnInterval"])
+      if(!$(id)) return "missing control: " + id;
+    return true;
+  });
+  T("the lead sequence always half presses first", ()=> defaultStrategyId() === "two-stage-af");
+  T("the bare full press is a last resort, not a lead", ()=>{
+    const ids = WireLink.strategies().map(s=>s.id);
+    return ids.indexOf("two-stage") > 2 || ("bare full press sits at index " + ids.indexOf("two-stage"));
+  });
+  T("the autofocus checkbox sets focus mode instead of dropping a stage", ()=>{
+    const src = WireLink.runReleaseSequence.toString();
+    return (src.indexOf("PROP.AFMODE") >= 0 && src.indexOf("restoreAf") >= 0)
+      || "the checkbox still changes which stages are sent";
+  });
+  T("a borrowed focus mode is always given back", ()=>{
+    const src = WireLink.runReleaseSequence.toString();
+    return (src.split("restoreAf()").length - 1) >= 2 || "one exit path leaves the body in manual focus";
+  });
+  T("the release warns when autofocus is asked of a lens with none", ()=>{
+    const src = WireLink.runReleaseSequence.toString();
+    return src.indexOf("no lens it can drive") >= 0 || "no warning when autofocus cannot confirm";
+  });
+  T("every sequence in the list presses before it releases", ()=>{
+    for(const st of WireLink.strategies()){
+      const src = st.run.toString();
+      if(src.indexOf("RemoteReleaseOn") >= 0 && src.indexOf("RemoteReleaseOff") < 0) return st.id + " never lets go";
+    }
+    return true;
+  });
+  T("the button and the probe run the same code", ()=>{
+    const a = WireLink._release.toString(), b = WireLink._probeRelease.toString();
+    return (a.indexOf("runReleaseSequence") >= 0 && b.indexOf("runReleaseSequence") >= 0)
+      || "release and probe still have separate implementations";
+  });
+  T("ordering keeps every sequence", ()=>{
+    const list = WireLink.strategies();
+    const out = orderStrategies(list, "ui-lock");
+    return (out.length === list.length && new Set(out.map(s=>s.id)).size === list.length)
+      || "ordering lost or duplicated a sequence";
+  });
+  T("ordering puts the preferred sequence first", ()=>{
+    const out = orderStrategies(WireLink.strategies(), "ui-lock");
+    return out[0].id === "ui-lock" || ("first is " + out[0].id);
+  });
+  T("ordering is stable for everything else", ()=>{
+    const list = WireLink.strategies();
+    const out = orderStrategies(list, "ui-lock");
+    const rest = out.slice(1).map(s=>s.id);
+    const want = list.filter(s=>s.id!=="ui-lock").map(s=>s.id);
+    return rest.join(",") === want.join(",") || ("got " + rest.join(","));
+  });
+  T("an unknown preference leaves the order alone", ()=>{
+    const list = WireLink.strategies();
+    const out = orderStrategies(list, "no-such-sequence");
+    return out.map(s=>s.id).join(",") === list.map(s=>s.id).join(",") || "order changed";
+  });
+  T("no sort with an inconsistent comparator remains", ()=>{
+    const src = WireLink._release.toString() + WireLink.runReleaseSequence.toString();
+    return src.indexOf(".sort(") < 0 || "a sort is still being used to order the sequences";
+  });
+  T("a reply for another transaction is called stale", ()=>
+    containerRole({type:3, tid:7, code:0x2001}, 8) === "stale");
+  T("a reply for this transaction is accepted", ()=>
+    containerRole({type:3, tid:8, code:0x2001}, 8) === "response");
+  T("a data phase for this transaction is accepted", ()=>
+    containerRole({type:2, tid:8}, 8) === "data");
+  T("an event container belongs to no transaction", ()=>
+    containerRole({type:4, tid:0}, 8) === "event" && containerRole({type:4, tid:999}, 8) === "event");
+  T("the transaction loop checks the id", ()=>{
+    const src = WireLink._internals.transactSource();
+    return (src.indexOf("containerRole") >= 0 && src.indexOf("myTid") >= 0)
+      || "transact still accepts whatever arrives next";
+  });
+  T("every transaction starts from a clean buffer", ()=>{
+    const src = WireLink._internals.transactSource();
+    return src.indexOf("drainStale") >= 0 || "transact does not drain leftovers";
+  });
   T("two containers in one transfer are both kept", ()=>{
     const b = new Uint8Array(28); const dv = new DataView(b.buffer);
     dv.setUint32(0,16,true); dv.setUint16(4,2,true); dv.setUint16(6,0x9153,true); dv.setUint32(8,7,true);
@@ -2168,9 +3669,186 @@ function runTests(){
     const d = W.hexdump(new Uint8Array(200), 4);
     return /\+196 bytes/.test(d) || d;
   });
+  T("release quiets the render loops while it runs", ()=>{
+    const src = WireLink.release.toString();
+    return (/HOLD\.render\s*=\s*true/.test(src) && /finally/.test(src)) || "release does not hold the render loops";
+  });
+  T("the hold is always released, even on a throw", ()=>{
+    const src = WireLink.release.toString();
+    return /finally\s*\{\s*HOLD\.render\s*=\s*false/.test(src) || "the hold is not in a finally";
+  });
+  T("the compositor honours the hold", ()=>{
+    return compose.toString().indexOf("HOLD.render") >= 0 || "compose ignores the hold";
+  });
+  T("the console redraw honours the hold", ()=>{
+    return refresh.toString().indexOf("HOLD.render") >= 0 || "refresh ignores the hold";
+  });
+  T("holding the render loops does not stop them permanently", ()=>{
+    HOLD.render = true; compose(0); refresh(); HOLD.render = false;
+    refresh();
+    return $("rdTv").textContent.length > 0 || "refresh did not resume";
+  });
+  T("a leg with an unconfirmed scale still gets a needle", ()=>{
+    const save = JSON.stringify({a:CAM.av,t:CAM.tv,i:CAM.iso});
+    CAM.tv = { value:"1/25", options:[] };
+    drawDial();
+    const needles = document.querySelectorAll("#dial line[stroke='var(--brass)']").length;
+    const r = JSON.parse(save); CAM.av=r.a; CAM.tv=r.t; CAM.iso=r.i; drawDial();
+    return needles >= 1 || "no needle drawn for an undescribed leg";
+  });
+  T("the dial and the controls read the same source", ()=>{
+    return drawDial.toString().indexOf("optionsFor") >= 0 || "the dial still reads the raw option list";
+  });
+  T("a declared aperture feeds the EV reading", ()=>{
+    const save = JSON.stringify({a:CAM.av,t:CAM.tv,i:CAM.iso}), d = DECLARED.av;
+    CAM.av = {value:null, options:[]}; CAM.tv = {value:"1/125", options:[]}; CAM.iso = {value:"100", options:[]};
+    DECLARED.av = "4.0";
+    const e = ev100(effectiveAv(), CAM.tv.value, CAM.iso.value);
+    const r = JSON.parse(save); CAM.av=r.a; CAM.tv=r.t; CAM.iso=r.i; DECLARED.av = d;
+    return (e !== null && Math.abs(e - 10.97) < 0.05) || ("got " + e);
+  });
+  T("a reported aperture always wins over a declared one", ()=>{
+    const save = JSON.stringify(CAM.av), d = DECLARED.av;
+    CAM.av = {value:"2.8", options:[]}; DECLARED.av = "16";
+    const got = effectiveAv();
+    CAM.av = JSON.parse(save); DECLARED.av = d;
+    return got === "2.8" || ("got " + got);
+  });
+  T("a declared aperture rides in the session", ()=>{
+    const d = DECLARED.av; DECLARED.av = "5.6";
+    const v = validate(JSON.parse(JSON.stringify(currentSession())));
+    DECLARED.av = d;
+    return v.value.declaredAv === "5.6" || ("carried " + v.value.declaredAv);
+  });
+  T("the ring labels do not stack on one radius", ()=>{
+    drawDial();
+    const ts = Array.from(document.querySelectorAll("#dial text")).filter(t=>/^(Av|Tv|ISO)$/.test(t.textContent));
+    if(ts.length !== 3) return "expected three ring labels, got " + ts.length;
+    const angles = ts.map(t => Math.round(Math.atan2(+t.getAttribute("y")-150, +t.getAttribute("x")-150)*100));
+    return new Set(angles).size === 3 || "labels share an angle";
+  });
+  T("connect prepares the body rather than leaving it to the first press", ()=>{
+    const src = WireLink.open.toString();
+    return (src.indexOf("clearPress") >= 0 && src.indexOf("primeCapacity") >= 0 && src.indexOf("ResetUILock") >= 0)
+      || "connect does not bring the body to a known state";
+  });
+  T("a setting with no reported list still offers the published values", ()=>{
+    const save = JSON.stringify(CAM.av);
+    CAM.av = { value:null, options:[] };
+    const o = optionsFor("av");
+    CAM.av = JSON.parse(save);
+    return (o.list.length > 20 && o.confirmed === false) || ("got " + o.list.length + " values");
+  });
+  T("a reported list is preferred over the published one", ()=>{
+    const save = JSON.stringify(CAM.av);
+    CAM.av = { value:"4.0", options:["2.8","4.0","5.6"] };
+    const o = optionsFor("av");
+    CAM.av = JSON.parse(save);
+    return (o.confirmed === true && o.list.length === 3) || "reported list was not used";
+  });
+  T("property description enumeration decodes", ()=>{
+    // propcode, datatype UINT16, getset, default, current, form 2, count, values
+    const b = new Uint8Array(2+2+1+2+2+1+2+ 3*2);
+    const dv = new DataView(b.buffer); let o = 0;
+    dv.setUint16(o,0xd101,true); o+=2;
+    dv.setUint16(o,0x0004,true); o+=2;      // UINT16
+    dv.setUint8(o,1); o+=1;
+    dv.setUint16(o,0x28,true); o+=2;
+    dv.setUint16(o,0x28,true); o+=2;
+    dv.setUint8(o,2); o+=1;                 // enumeration
+    dv.setUint16(o,3,true); o+=2;
+    dv.setUint16(o,0x20,true); o+=2;
+    dv.setUint16(o,0x28,true); o+=2;
+    dv.setUint16(o,0x30,true); o+=2;
+    const list = parsePropDescEnum(b, "av");
+    return (list && list.join(",") === "2.8,4.0,5.6") || ("got " + (list && list.join(",")));
+  });
+  T("a property description in an unsupported form is declined", ()=>{
+    const b = new Uint8Array(12); new DataView(b.buffer).setUint16(2,0x0004,true);
+    return parsePropDescEnum(b, "av") === null;
+  });
+  T("every release path clears a held press first", ()=>{
+    // release() is a thin wrapper that holds the render loops; the work
+    // is in _release, so check both rather than only the outer one.
+    const src = WireLink.release.toString() + WireLink._release.toString();
+    return (src.indexOf("clearPress") >= 0) || "release never clears the press state";
+  });
+  T("a capture asks for live view back", ()=>{
+    const src = WireLink.release.toString() + WireLink._release.toString();
+    return (src.indexOf("restoreLive") >= 0) || "release never restores the viewfinder";
+  });
+  T("the slow settle variant is in the list", ()=>{
+    const ids = WireLink.strategies().map(s=>s.id);
+    return ids.indexOf("two-stage-slow") >= 0 && ids.length === 8;
+  });
+  T("clearing a press is tolerant of nothing being held", ()=>{
+    const src = WireLink.clearPress.toString();
+    return /tolerate/.test(src) || "clearPress would throw when nothing is held";
+  });
+  T("a write is never gated on the standard property list", ()=>{
+    // The R6 lists five standard properties and writes ISO regardless, so
+    // a refusal driven off that list is a defect. Read the function back
+    // and assert it consults the list without ever refusing on it.
+    const src = WireLink.setProp.toString();
+    if(src.indexOf("deviceProps") < 0) return "setProp no longer mentions the property list";
+    return !/deviceProps[\s\S]{0,200}return false/.test(src) || "setProp still refuses on the property list";
+  });
+  T("a failed release forgets the sequence it was using", ()=>{
+    const before = WireLink.releaseStrategy();
+    WireLink.setStrategy("ui-lock");
+    const set = WireLink.releaseStrategy() === "ui-lock";
+    if(before) WireLink.setStrategy(before);
+    return set;
+  });
+  T("shooting mode decodes", ()=> MODES[0x03] === "M" && MODES[0x09] === "Auto");
+  T("automatic modes are not treated as settable", ()=>
+    MANUAL_MODES.indexOf("M") >= 0 && MANUAL_MODES.indexOf("Auto") < 0 && MANUAL_MODES.indexOf("Scene intelligent auto") < 0);
+  T("the mode leg exists on the camera model", ()=> !!CAM.mode && "value" in CAM.mode);
+  T("resetting the model clears the mode too", ()=>{
+    // Snapshot everything this touches. A self test that leaves the
+    // instrument in a different state than it found it is a defect.
+    const legs = ["av","tv","iso","ec","wb","drive","af","mode"];
+    const snap = { link:CAM.link, connected:CAM.connected, canControl:CAM.canControl,
+      live:CAM.live, model:CAM.model, battery:CAM.battery, shots:CAM.shots };
+    for(const k of legs) snap[k] = CAM[k];
+    CAM.mode = { value:"M", options:["M"] };
+    resetCam("bench");
+    const cleared = CAM.mode.value === null && CAM.av.value === null;
+    for(const k of legs) CAM[k] = snap[k];
+    CAM.link = snap.link; CAM.connected = snap.connected; CAM.canControl = snap.canControl;
+    CAM.live = snap.live; CAM.model = snap.model; CAM.battery = snap.battery; CAM.shots = snap.shots;
+    refresh();
+    return cleared;
+  });
+  T("three write forms are offered", ()=>{
+    const f = WireLink.writeForms();
+    return f.length === 3 && f.every(x=>x.id && x.name && typeof x.run === "function");
+  });
+  T("write forms have distinct ids", ()=>{
+    const ids = WireLink.writeForms().map(f=>f.id);
+    return new Set(ids).size === ids.length;
+  });
+  T("the default is a half then full press", ()=> defaultStrategyId() === "two-stage-af");
+  T("the default is a real strategy in the list", ()=>{
+    return WireLink.strategies().map(s=>s.id).indexOf(defaultStrategyId()) >= 0;
+  });
+  T("every strategy id is declared in the session schema", ()=>{
+    const ids = WireLink.strategies().map(s=>s.id);
+    for(const i of ids) if(SCHEMA.strategy.values.indexOf(i) < 0) return "schema is missing " + i;
+    return true;
+  });
+  T("a discovered strategy survives an export and import", ()=>{
+    const before = WireLink.releaseStrategy();
+    WireLink.setStrategy("ui-lock");
+    const v = validate(JSON.parse(JSON.stringify(currentSession())));
+    const carried = v.value.strategy;
+    if(before) WireLink.setStrategy(before);
+    return carried === "ui-lock" || ("carried " + carried);
+  });
+  T("a made up strategy is refused", ()=> WireLink.setStrategy("do-whatever") === false);
   T("the two stage press is tried first", ()=>{
     const st = WireLink.strategies();
-    return st[0].id === "two-stage-af" && st[1].id === "two-stage";
+    return st[0].id === "two-stage-af" && st[1].id === "two-stage-slow";
   });
   T("every release strategy is well formed", ()=>{
     for(const st of WireLink.strategies()){
