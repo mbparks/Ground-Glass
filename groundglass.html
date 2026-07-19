@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GroundGlass :: groundglass-v0.20.5.html :: v0.20.5 -->
+<!-- GroundGlass :: groundglass-v0.21.3.html :: v0.21.3 -->
 <html lang="en" data-theme="darkcloth">
 <head>
 <meta charset="utf-8">
@@ -222,7 +222,7 @@ ul.tight li{margin:2px 0}
 <header class="bar">
   <div class="brand">
     <span class="nm">GROUND GLASS</span>
-    <span class="fi">FI-122 &middot; <span id="verLabel">v0.20.5</span></span>
+    <span class="fi">FI-122 &middot; <span id="verLabel">v0.21.3</span></span>
   </div>
 
   <div class="links" role="group" aria-label="Camera link">
@@ -429,6 +429,8 @@ ul.tight li{margin:2px 0}
             <button class="btn" id="btnCcProbe">PROBE</button>
             <button class="btn primary" id="btnCcOpen">CONNECT</button>
           </div>
+          <button class="btn wide" id="btnCcApi" style="margin-top:6px">API MAP</button>
+          <p class="small">CCAPI describes itself: the camera hands back every endpoint it supports. This link only calls what the body has said exists, so nothing here is guesswork. API MAP shows you the list.</p>
           <p class="small" id="ccNote" style="margin-top:8px">The camera sends no cross origin headers, so this page can always <em>show</em> the live view but may not be able to <em>read</em> replies. PROBE finds out which half works from here.</p>
           <div class="row"><label for="chkCcBlind">Blind control</label><input type="checkbox" id="chkCcBlind"></div>
           <p class="small">Blind control sends commands the camera will act on but whose replies cannot be read back. Settings shown in the console are then a guess, not a readback.</p>
@@ -464,7 +466,7 @@ ul.tight li{margin:2px 0}
   <div class="db">
     <dl class="kv">
       <dt>Instrument</dt><dd>GROUND GLASS, Field Instrument FI-122</dd>
-      <dt>Version</dt><dd id="aboutVer">v0.20.5</dd>
+      <dt>Version</dt><dd id="aboutVer">v0.21.3</dd>
       <dt>License</dt><dd>GPL-3.0</dd>
       <dt>Runs</dt><dd>From disk. No server, no build step, no dependencies.</dd>
     </dl>
@@ -501,7 +503,7 @@ ul.tight li{margin:2px 0}
 <script>
 "use strict";
 /* =================================================================
-   GROUND GLASS (FI-122)  v0.20.5
+   GROUND GLASS (FI-122)  v0.21.3
    A single file console that puts a Canon EOS R6 on the bench:
    a monitor with real scopes, and the camera's own knobs.
 
@@ -514,7 +516,7 @@ ul.tight li{margin:2px 0}
    No server. No build step. No libraries. Runs from file://.
    ================================================================= */
 
-const VERSION = "0.20.5";
+const VERSION = "0.21.3";
 const $ = (id) => document.getElementById(id);
 const clamp = (v,a,b) => v<a?a:(v>b?b:v);
 
@@ -998,6 +1000,7 @@ function orderStrategies(list, preferredId){
   return head.concat(tail);
 }
 
+let wireInterval = null;
 const WireLink = (function(){
   let dev=null, iface=0, epIn=0, epOut=0, tid=0, poll=0, evPoll=0, busy=false;
   let pollMs = 120, rxBuf = new Uint8Array(0), info = null, releaseOp = null, hex = false;
@@ -1016,6 +1019,7 @@ const WireLink = (function(){
      so several are counted, and anything unrecognised is logged once so
      it can be identified at the bench rather than guessed at here. */
   const OBJECT_EVENTS = [0xc181, 0xc18b, 0xc190, 0xc1a7, 0xc1a9];
+  wireInterval = makeIntervalometer(() => WireLink);
 
   function pack(type, code, params, payload, useTid){
     const np = params ? params.length : 0;
@@ -1555,6 +1559,14 @@ const WireLink = (function(){
                              await new Promise(r=>setTimeout(r,80));
                              await transact(OP.EOS_RemoteReleaseOff,[2]);
                              await transact(OP.EOS_RemoteReleaseOff,[1]); } },
+        /* The older single opcode. Promoted to second because in a full
+           sweep of ten sequences on an R6 it was the only one that
+           produced a frame: everything built on RemoteReleaseOn was
+           either accepted with nothing to show for it or answered busy.
+           It is not the modern way to do this and it is the way that
+           worked, and the second of those matters more. */
+        { id:"single-op", name:"Single shot opcode 0x910f",
+          run: async () => { await transact(OP.EOS_RemoteRelease); } },
         { id:"two-stage-slow", name:"Two stage press, long settle before the full press",
           run: async () => { await transact(OP.EOS_RemoteReleaseOn,[1,0]);
                              await new Promise(r=>setTimeout(r,1500));
@@ -1584,8 +1596,6 @@ const WireLink = (function(){
           run: async () => { await transact(OP.EOS_RemoteReleaseOn,[2,0]);
                              await new Promise(r=>setTimeout(r,80));
                              await transact(OP.EOS_RemoteReleaseOff,[2]); } },
-        { id:"single-op",name:"Single shot opcode 0x910f",
-          run: async () => { await transact(OP.EOS_RemoteRelease); } }
       ];
     },
     async waitForObject(ms){
@@ -1686,6 +1696,7 @@ const WireLink = (function(){
           strategy = st.id; failures = 0;
           await restoreAf();
           ok("Release sequence this body honours: " + st.name);
+          log("That is now the sequence CAPTURE will use. Save the session to keep it for next time.");
           return { ok:true, rows, strategy:st.id };
         }
         log("  no file from that one");
@@ -1947,39 +1958,12 @@ const WireLink = (function(){
       return rows;
     },
 
-    /* ---- intervalometer --------------------------------------------
-       Entirely on this side of the cable, which is why it is the one
-       feature here I can promise behaves. It reuses the release path,
-       so it inherits one press one frame, and it stops itself on a
-       failure rather than hammering a camera that is not cooperating. */
-    intervalRunning(){ return !!interval; },
-    stopInterval(reason){
-      if(!interval) return;
-      clearTimeout(interval.timer); interval = null;
-      log("Intervalometer stopped" + (reason ? ": " + reason : "."));
-    },
-    startInterval(everySeconds, frames, onTick){
-      if(interval) this.stopInterval("restarted");
-      const gap = Math.max(1, everySeconds|0) * 1000;
-      const want = Math.max(1, frames|0);
-      interval = { made:0, want, gap, timer:null };
-      const self = this;
-      const fire = async () => {
-        if(!interval) return;
-        let good = false;
-        try{ good = await self.release(false); }
-        catch(e){ err("Intervalometer: " + e.message); }
-        if(!interval) return;
-        if(good){ interval.made++; }
-        else { self.stopInterval("a frame did not appear, so it stopped rather than keep firing blind"); if(onTick) onTick(interval); return; }
-        if(onTick) onTick(interval);
-        if(interval.made >= interval.want){ self.stopInterval("finished, " + interval.made + " frames"); return; }
-        interval.timer = setTimeout(fire, interval.gap);
-      };
-      log("Intervalometer running: " + want + " frames, one every " + (gap/1000) + " seconds.");
-      fire();
-      return true;
-    },
+    /* ---- intervalometer -------------------------------------------
+       The shared one. Both links hand it their own release, so there is
+       no second copy to drift. */
+    intervalRunning(){ return wireInterval.running(); },
+    stopInterval(reason){ wireInterval.stop(reason); },
+    startInterval(every, frames, onTick){ return wireInterval.start(every, frames, onTick); },
 
     startTap(seconds){
       tapUntil = Date.now() + (seconds||10)*1000;
@@ -2059,6 +2043,11 @@ const WireLink = (function(){
     },
     writeFormId(){ return writeForm; },
     releaseStrategy(){ return strategy; },
+    setReleaseStrategy(id){
+      const ok2 = this.strategies().some(st => st.id === id);
+      if(ok2){ strategy = id; failures = 0; }
+      return ok2;
+    },
     setStrategy(id){
       if(STRATEGY_IDS.indexOf(id) < 0) return false;
       strategy = id;
@@ -2234,36 +2223,175 @@ const WireLink = (function(){
               fire and forget requests the camera acts on but does
               not report back.
    ---------------------------------------------------------------- */
+/* Shared intervalometer. One implementation, handed whichever link is
+   carrying, because a second copy is how the release button and the
+   release probe drifted apart earlier in this build. */
+function makeIntervalometer(getLink){
+  let run = null;
+  return {
+    running(){ return !!run; },
+    stop(reason){
+      if(!run) return;
+      clearTimeout(run.timer); run = null;
+      log("Intervalometer stopped" + (reason ? ": " + reason : "."));
+    },
+    start(everySeconds, frames, onTick){
+      if(run) this.stop("restarted");
+      const gap = Math.max(1, everySeconds|0) * 1000;
+      const want = Math.max(1, frames|0);
+      run = { made:0, want, gap, timer:null };
+      const self = this;
+      const fire = async () => {
+        if(!run) return;
+        let good = false;
+        try{ good = await getLink().release(false); }
+        catch(e){ err("Intervalometer: " + e.message); }
+        if(!run) return;
+        if(!good){
+          self.stop("a frame did not appear, so it stopped rather than keep firing blind");
+          if(onTick) onTick(null); return;
+        }
+        run.made++;
+        if(onTick) onTick(run);
+        if(run.made >= run.want){ self.stop("finished, " + run.made + " frames"); return; }
+        run.timer = setTimeout(fire, run.gap);
+      };
+      log("Intervalometer running: " + want + " frames, one every " + (gap/1000) + " seconds.");
+      fire();
+      return true;
+    }
+  };
+}
+
 const AetherLink = (function(){
   let host = "", readable = false, blind = false, imgPoll = 0, alive = false;
+  let api = null, settingsTimer = 0, lastAdded = [], batteryText = null;
 
   function url(p){ return host.replace(/\/+$/,"") + p; }
+  /* Accept what the camera screen actually shows. It gives an address
+     and a port and no scheme, and typing that in should just work. */
+  function normaliseHost(h){
+    let v = String(h || "").trim();
+    if(!v) return "";
+    if(!/^https?:\/\//i.test(v)) v = "http://" + v;
+    if(!/:\d+$/.test(v.replace(/^https?:\/\//i,"").replace(/\/.*$/,""))) v = v.replace(/\/+$/,"") + ":8080";
+    return v.replace(/\/+$/,"");
+  }
+
+  /* Every request gets a deadline. A browser asked to reach a device on
+     the local network from a page opened off disk does not always
+     refuse: it can sit on the request without ever answering, and a
+     promise that never settles is a button that appears to do nothing.
+     That is worse than a failure, because a failure at least reports. */
+  const NET_TIMEOUT = 6000;
+  async function timed(p, ms, what){
+    const ac = new AbortController();
+    const t = setTimeout(()=>ac.abort(), ms || NET_TIMEOUT);
+    try{ return await p(ac.signal); }
+    catch(e){
+      if(e && e.name === "AbortError"){
+        throw new Error((what || "the request") + " did not answer within " + ((ms||NET_TIMEOUT)/1000) + " seconds");
+      }
+      throw e;
+    }
+    finally{ clearTimeout(t); }
+  }
+  function has(path, method){
+    if(!api) return null;                 // not asked yet, which is not the same as no
+    const e = api[path];
+    return e ? !!e[method || "get"] : false;
+  }
   async function jget(p){
-    const r = await fetch(url(p), {cache:"no-store"});
-    if(!r.ok) throw new Error(p+" returned "+r.status);
+    const r = await timed(sig => fetch(url(p), {cache:"no-store", signal:sig}), NET_TIMEOUT, p);
+    if(!r.ok) throw new Error(p + " returned " + r.status);
     return await r.json();
   }
   async function jput(p, body){
-    const r = await fetch(url(p), {method:"PUT", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(body)});
-    if(!r.ok) throw new Error(p+" returned "+r.status);
-    return r.status===204 ? null : await r.json().catch(()=>null);
+    const r = await timed(sig => fetch(url(p), {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body), signal:sig}), NET_TIMEOUT, p);
+    if(!r.ok) throw new Error(p + " returned " + r.status);
+    return r.status === 204 ? null : await r.json().catch(()=>null);
   }
   async function jpost(p, body){
-    const r = await fetch(url(p), {method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(body)});
-    if(!r.ok) throw new Error(p+" returned "+r.status);
-    return r.status===204 ? null : await r.json().catch(()=>null);
+    const r = await timed(sig => fetch(url(p), {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body), signal:sig}), NET_TIMEOUT, p);
+    if(!r.ok) throw new Error(p + " returned " + r.status);
+    return r.status === 204 ? null : await r.json().catch(()=>null);
   }
   async function blindPost(p, body){
-    // A simple request: POST, text/plain, no custom headers, so the
-    // browser sends it without asking permission first. The reply is
-    // opaque, so success here means "sent", not "accepted".
-    await fetch(url(p), {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain"},
-      body:JSON.stringify(body)});
+    await timed(sig => fetch(url(p), {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain"}, body:JSON.stringify(body), signal:sig}), NET_TIMEOUT, p);
   }
+
+  /* CCAPI describes itself. The root hands back every path this body
+     supports and which methods each one takes, so nothing here has to
+     be guessed at: a call is made only when the camera has said it
+     exists, and anything absent is reported as unsupported rather than
+     tried in hope. This is what DEVICE INFO is for the WIRE link. */
+  async function readApiMap(){
+    const doc = await jget("/ccapi/");
+    const map = {};
+    let versions = 0;
+    for(const ver in doc){
+      if(!Array.isArray(doc[ver])) continue;
+      versions++;
+      for(const e of doc[ver]){
+        if(e && e.path) map[e.path] = { get:!!e.get, post:!!e.post, put:!!e.put, del:!!e.delete, ver };
+      }
+    }
+    api = map;
+    const n = Object.keys(map).length;
+    log("The camera describes " + n + " endpoints across " + versions + " API version(s).");
+    return map;
+  }
+  function pathFor(kind, leaf){
+    // Prefer the newest version the body offers for a given leaf.
+    if(!api) return "/ccapi/ver100/" + kind + "/" + leaf;
+    const want = "/" + kind + "/" + leaf;
+    let best = null;
+    for(const p in api) if(p.endsWith(want)) { if(!best || p > best) best = p; }
+    return best;
+  }
+
+  const SETTING_LEAF = { av:"av", tv:"tv", iso:"iso", ec:"exposure", wb:"wb",
+                         drive:"drivemode", af:"afoperation" };
+  function tidy(key, v){ return key === "av" ? String(v).replace(/^f/i, "") : String(v); }
+  function untidy(key, v){ return key === "av" ? ("f" + v) : v; }
+
+  async function readSettings(){
+    for(const key in SETTING_LEAF){
+      const p = pathFor("shooting/settings", SETTING_LEAF[key]);
+      if(!p || has(p, "get") === false) continue;
+      try{
+        const j = await jget(p);
+        if(j && typeof j.value !== "undefined"){
+          CAM[key].value = tidy(key, j.value);
+          // CCAPI hands over the allowed values with the current one, so
+          // these scales are the body's own rather than a published table.
+          if(Array.isArray(j.ability)) CAM[key].options = j.ability.map(v => tidy(key, v));
+        }
+      }catch(e){ dbg("settings " + key + ": " + e.message); }
+    }
+    const mp = pathFor("shooting/settings", "shootingmodedial");
+    if(mp && has(mp, "get") !== false){
+      try{ const j = await jget(mp); if(j && j.value) CAM.mode.value = String(j.value); }
+      catch(e){ dbg("mode: " + e.message); }
+    }
+    const bp = pathFor("devicestatus", "battery");
+    if(bp && has(bp, "get") !== false){
+      try{
+        const b = await jget(bp);
+        if(b){
+          // Some bodies answer a number, some a word. A word is not a
+          // percentage and is not shown as one.
+          const n = parseInt(b.level, 10);
+          if(isFinite(n) && n >= 0 && n <= 100){ CAM.battery = n; batteryText = null; }
+          else if(typeof b.level === "string"){ CAM.battery = null; batteryText = b.level; CAM.batteryLevel = null; }
+        }
+      }catch(e){ dbg("battery: " + e.message); }
+    }
+  }
+
   function pumpImg(){
     const im = $("srcImg");
+    const p = pathFor("shooting/liveview", "flipdetail") || "/ccapi/ver100/shooting/liveview/flipdetail";
     im.onload = () => {
       FRAME.source = im; FRAME.kind = "img"; FRAME.w = im.naturalWidth; FRAME.h = im.naturalHeight;
       CAM.live = true;
@@ -2272,104 +2400,285 @@ const AetherLink = (function(){
     im.onerror = () => { CAM.live = false; imgPoll = setTimeout(next, 700); };
     function next(){
       if(!alive) return;
-      im.src = url("/ccapi/ver100/shooting/liveview/flipdetail?kind=image&_="+Date.now());
+      im.src = url(p + "?kind=image&_=" + Date.now());
     }
     next();
   }
-  async function readSettings(){
-    const jobs = [["av","av",v=>v.replace(/^f/i,"")],["tv","tv",v=>v],["iso","iso",v=>v],
-      ["exposure","ec",v=>v],["wb","wb",v=>v],["drivemode","drive",v=>v],["afoperation","af",v=>v]];
-    for(const [ep,key,fmt] of jobs){
+
+  /* The event stream is how a release is confirmed here: a new file
+     shows up as an added content path, which is also the thing to fetch
+     if the frame is wanted on disk. Acknowledgement of the shutter
+     request proves nothing, exactly as over USB. */
+  async function pollEvents(ms){
+    const p = pathFor("event", "polling");
+    if(!p) return [];
+    const until = Date.now() + (ms || 6000);
+    const found = [];
+    while(Date.now() < until){
       try{
-        const j = await jget("/ccapi/ver100/shooting/settings/"+ep);
-        if(j && typeof j.value !== "undefined"){
-          CAM[key].value = fmt(String(j.value));
-          if(Array.isArray(j.ability)) CAM[key].options = j.ability.map(v=>fmt(String(v)));
+        const j = await jget(p + "?timeout=short");
+        if(j){
+          if(Array.isArray(j.addedcontents)) for(const c of j.addedcontents) found.push(c);
+          if(j.battery && typeof j.battery.level !== "undefined"){
+            const n = parseInt(j.battery.level, 10);
+            if(isFinite(n) && n <= 100){ CAM.battery = n; batteryText = null; }
+            else { batteryText = String(j.battery.level); CAM.battery = null; }
+          }
         }
-      }catch(e){ dbg("settings/"+ep+": "+e.message); }
+      }catch(e){ dbg("event poll: " + e.message); }
+      if(found.length) break;
+      await new Promise(r=>setTimeout(r,250));
     }
-    try{ const b = await jget("/ccapi/ver100/devicestatus/battery");
-      if(b && typeof b.level !== "undefined"){
-        const n = parseInt(b.level,10); CAM.battery = isFinite(n) ? n : null;
-      }
-    }catch(e){ dbg("battery: "+e.message); }
+    if(found.length) lastAdded = found;
+    return found;
   }
+
+  const inter = makeIntervalometer(() => AetherLink);
 
   return {
     name:"aether",
     setBlind(v){ blind = !!v; },
+    _normalise: normaliseHost,
+    apiMap(){ return api; },
+    batteryWord(){ return batteryText; },
+
+    /* Two questions, not one. Can a readable request be made, and can
+       the camera be reached at all? An image load is not subject to the
+       rules that stop a data request being read, so the pair separates a
+       browser policy problem from a camera that is not there. Saying
+       "the browser is blocking you" when the device is simply
+       unreachable sends someone to the wrong problem. */
     async probe(h){
-      host = h; let out = { readable:false, reachable:false };
-      try{
-        const j = await jget("/ccapi/");
-        out.readable = true; out.reachable = true;
-        ok("PROBE: replies are readable from here. Full control available.");
-        dbg("ccapi versions: "+Object.keys(j||{}).join(", "));
-      }catch(e){
-        dbg("probe fetch failed: "+e.message);
-        const reach = await new Promise(res=>{
-          const im = new Image(); let done=false;
-          const t = setTimeout(()=>{ if(!done){ done=true; res(false); } }, 2500);
-          im.onload = ()=>{ if(!done){ done=true; clearTimeout(t); res(true); } };
-          im.onerror= ()=>{ if(!done){ done=true; clearTimeout(t); res(false); } };
-          im.src = url("/ccapi/ver100/shooting/liveview/flipdetail?kind=image&_="+Date.now());
-        });
-        out.reachable = reach;
-        if(reach) log("PROBE: camera is reachable and the picture will come through, but replies cannot be read. Turn on blind control to send commands anyway.");
-        else err("PROBE: no answer at "+host+". Check the address and port shown on the camera, and that this machine is on the camera network.");
+      host = normaliseHost(h);
+      const rows = [];
+      let out = { readable:false, reachable:false, rows };
+      if(!host){
+        rows.push({name:"Address", pass:false, note:"Enter the address the camera shows when CCAPI is switched on."});
+        return out;
       }
-      readable = out.readable;
+      log("Probing " + host + " ...");
+
+      // 1. a readable request
+      let readErr = "";
+      try{
+        await readApiMap();
+        out.readable = true; out.reachable = true;
+        rows.push({name:"Replies readable", pass:true, note:"full control is available"});
+        readable = true;
+        return out;
+      }catch(e){ readErr = e.message; }
+      rows.push({name:"Replies readable", pass:false, note:readErr});
+
+      // 2. the same host over https, in case the camera was set that way
+      if(/^http:/i.test(host)){
+        const alt = host.replace(/^http:/i, "https:");
+        try{
+          const r = await timed(sig => fetch(alt + "/ccapi/", {cache:"no-store", signal:sig}), 4000, alt);
+          if(r.ok){
+            rows.push({name:"Answers on https instead", pass:true, note:"change the address to " + alt});
+            log("The camera answered on " + alt + ". Use that address.");
+          }
+        }catch(e){ dbg("https attempt: " + e.message); }
+      }
+
+      // 3. reachable at all, by a route the browser does not gate
+      const reach = await new Promise(res => {
+        const im = new Image(); let done = false;
+        const t = setTimeout(()=>{ if(!done){ done = true; res(false); } }, 4000);
+        im.onload  = ()=>{ if(!done){ done = true; clearTimeout(t); res(true); } };
+        im.onerror = ()=>{ if(!done){ done = true; clearTimeout(t); res(false); } };
+        im.src = url("/ccapi/ver100/shooting/liveview/flipdetail?kind=image&_=" + Date.now());
+      });
+      out.reachable = reach;
+      rows.push({name:"Picture arrives", pass:reach,
+        note: reach ? "an image loads from the camera" : "no image either"});
+
+      if(reach){
+        rows.push({name:"Diagnosis", pass:true,
+          note:"The camera is there and the picture will come through, but the browser will not let replies be read. Turn on blind control to send commands anyway. Nothing sent that way can be confirmed."});
+        log("PROBE: reachable, replies unreadable. Blind control is the way in from here.");
+      } else {
+        rows.push({name:"Diagnosis", pass:false,
+          note:"Nothing answered on either route, so this is very unlikely to be a browser rule. Something between here and the camera is not connected."});
+        rows.push({name:"Check, in this order", pass:false, note:
+          "1. Unplug the USB cable. Most Canon bodies switch the network off while a computer is attached over USB, and the WIRE link on this console counts. " +
+          "2. Confirm CCAPI is switched on in the camera menu, and that the camera is awake rather than asleep. " +
+          "3. Re-read the address and port from the camera screen, since the camera takes a new address each time it joins. " +
+          "4. Confirm this machine is on the same network as the camera."});
+        err("PROBE: no answer at " + host + " on either route.");
+        log("The USB cable is the first thing to try: a Canon body usually turns its network off while a computer is attached, so WIRE and AETHER rarely work at the same time.");
+      }
+      readable = false;
       return out;
     },
+
+    async apiReport(){
+      const rows = [];
+      if(!readable){ return [{name:"Readable", pass:false, note:"Replies cannot be read from this origin, so the camera cannot be asked what it supports."}]; }
+      if(!api) { try{ await readApiMap(); }catch(e){ return [{name:"API map", pass:false, note:e.message}]; } }
+      const groups = {};
+      for(const p in api){
+        const g = p.split("/").slice(3, 4).join("/") || "root";
+        groups[g] = (groups[g] || 0) + 1;
+      }
+      rows.push({name:"Endpoints described", pass:true, note:Object.keys(api).length + " total"});
+      for(const g in groups) rows.push({name:g, pass:true, note:groups[g] + " endpoint(s)"});
+      for(const [label, leaf, kind] of [
+        ["Shutter", "shutterbutton", "shooting/control"],
+        ["Movie button", "recbutton", "shooting/control"],
+        ["Event polling", "polling", "event"],
+        ["Live view", "flipdetail", "shooting/liveview"],
+        ["Autofocus", "af", "shooting/control"]
+      ]){
+        const p = pathFor(kind, leaf);
+        rows.push({name:label, pass:!!p, note: p ? p : "not offered by this body"});
+      }
+      return rows;
+    },
+
     async open(h){
-      resetCam("aether"); host = h; alive = true;
+      resetCam("aether"); host = h; alive = true; api = null; lastAdded = [];
       const p = await this.probe(h);
-      if(!p.reachable && !p.readable){ alive=false; return false; }
+      if(!p.reachable && !p.readable){ alive = false; return false; }
+
+      const lv = pathFor("shooting/liveview", "") || "/ccapi/ver100/shooting/liveview";
       try{
-        if(readable) await jpost("/ccapi/ver100/shooting/liveview", {cameradisplay:"on", liveviewsize:"medium"});
-        else if(blind) await blindPost("/ccapi/ver100/shooting/liveview", {cameradisplay:"on", liveviewsize:"medium"});
-      }catch(e){ dbg("liveview start: "+e.message); }
+        const body = { cameradisplay:"on", liveviewsize:"medium" };
+        if(readable) await jpost("/ccapi/ver100/shooting/liveview", body);
+        else if(blind) await blindPost("/ccapi/ver100/shooting/liveview", body);
+      }catch(e){ dbg("liveview start: " + e.message); }
+
       CAM.connected = true;
       CAM.canControl = readable || blind;
       CAM.model = "EOS over CCAPI";
       if(readable){
-        try{ const d = await jget("/ccapi/ver100/deviceinformation");
+        try{
+          const d = await jget("/ccapi/ver100/deviceinformation");
           if(d && d.productname) CAM.model = String(d.productname);
+          if(d && d.firmwareversion) log("Firmware " + d.firmwareversion + ".");
         }catch(e){}
         await readSettings();
-        setInterval(()=>{ if(alive && readable) readSettings(); }, 4000);
+        settingsTimer = setInterval(()=>{ if(alive && readable) readSettings(); }, 5000);
       }
       pumpImg();
-      ok("AETHER link open: "+CAM.model+(readable?" (full control)":(blind?" (blind control)":" (monitor only)")));
+      ok("AETHER link open: " + CAM.model +
+         (readable ? " (full control)" : (blind ? " (blind control)" : " (monitor only)")));
       return true;
     },
+
     async close(){
-      alive = false; clearTimeout(imgPoll);
-      const im = $("srcImg"); if(im){ im.onload=null; im.onerror=null; im.removeAttribute("src"); }
+      alive = false; clearTimeout(imgPoll); clearInterval(settingsTimer);
+      inter.stop();
+      const im = $("srcImg"); if(im){ im.onload = null; im.onerror = null; im.removeAttribute("src"); }
       try{ if(readable) await jpost("/ccapi/ver100/shooting/liveview", {cameradisplay:"on", liveviewsize:"off"}); }catch(e){}
-      FRAME.source=null; FRAME.kind="none";
+      FRAME.source = null; FRAME.kind = "none";
       log("AETHER link closed.");
     },
+
     async setProp(key, label){
-      const ep = { av:"av", tv:"tv", iso:"iso", ec:"exposure", wb:"wb", drive:"drivemode", af:"afoperation" }[key];
-      if(!ep) return false;
-      const val = (key==="av") ? ("f"+label) : label;
-      if(readable){
-        await jput("/ccapi/ver100/shooting/settings/"+ep, {value:val});
-        CAM[key].value = label; return true;
+      const leaf = SETTING_LEAF[key];
+      if(!leaf) return false;
+      const p = pathFor("shooting/settings", leaf);
+      if(!p){ err("This body does not offer a " + key + " endpoint."); return false; }
+      if(!readable){
+        err("Settings cannot be written blind. The browser only allows simple requests to this camera, and a setting change is not one. Live view and the shutter still work.");
+        return false;
       }
-      err("Settings cannot be written blind. The browser only allows simple requests here, and a setting change is not one. Live view and the shutter still work.");
+      if(has(p, "put") === false){ err("The camera describes " + p + " as read only."); return false; }
+      const before = CAM[key].value;
+      await jput(p, { value: untidy(key, label) });
+      // Read it back. A camera that quantises to its own increment lands
+      // near the asked for value, and that is the write working.
+      try{
+        const j = await jget(p);
+        const now = tidy(key, j && j.value);
+        CAM[key].value = now;
+        if(now === label) return true;
+        if(now !== before){ log("Asked for " + key + " " + label + " and the camera settled on " + now + "."); return true; }
+      }catch(e){ dbg("read back " + key + ": " + e.message); }
+      CAM[key].value = before;
+      const m = CAM.mode.value;
+      if(settableIn(m, key) === false){
+        err("The mode dial is on " + m + ", where the camera chooses the " + (CHOSEN_BY_CAMERA[key] || key) + " itself.");
+      } else {
+        err("The camera accepted the " + key + " write and did not change.");
+      }
       return false;
     },
+
     async release(afOnly){
+      const p = pathFor("shooting/control", "shutterbutton");
       const af = $("chkAf") && $("chkAf").checked;
-      const body = {af: afOnly ? true : af, action: afOnly ? "half_press" : "full_press"};
-      if(readable){ await jpost("/ccapi/ver100/shooting/control/shutterbutton", {af: body.af}); }
-      else if(blind){ await blindPost("/ccapi/ver100/shooting/control/shutterbutton", {af: body.af}); }
-      else { err("No control path on this link. Run PROBE, or turn on blind control."); return false; }
-      if(!afOnly) shutterClick();
+      if(!p && readable){ err("This body does not offer a shutter endpoint."); return false; }
+      if(afOnly){
+        const ap = pathFor("shooting/control", "af");
+        if(ap && readable){ await jpost(ap, {action:"start"}); return true; }
+        if(readable){ await jpost(p, {af:true}); return true; }
+        err("No focus path on this link."); return false;
+      }
+      if(readable){
+        await jpost(p || "/ccapi/ver100/shooting/control/shutterbutton", {af: af});
+      } else if(blind){
+        await blindPost("/ccapi/ver100/shooting/control/shutterbutton", {af: af});
+        // Nothing can be read back, so nothing is claimed.
+        log("Shutter request sent blind. Whether a frame was made cannot be read from here.");
+        return true;
+      } else {
+        err("No control path on this link. Run PROBE, or turn on blind control.");
+        return false;
+      }
+      const added = await pollEvents(6000);
+      if(!added.length){
+        err("The camera accepted the shutter request and no new file appeared.");
+        return false;
+      }
+      shutterClick();
+      ok("Exposure made: " + added[added.length - 1].split("/").pop());
       return true;
-    }
+    },
+
+    /* A frame here is a URL, so collecting it is a fetch rather than a
+       protocol dance. That is the one place this link is easier than
+       the cable. */
+    lastObject(){ return lastAdded.length ? { path: lastAdded[lastAdded.length - 1] } : null; },
+    async downloadObject(obj){
+      const target = (obj && obj.path) || (lastAdded.length ? lastAdded[lastAdded.length - 1] : null);
+      if(!target) throw new Error("the camera has not reported a new file since this link opened");
+      if(!readable) throw new Error("files cannot be collected while replies are unreadable from this origin");
+      const r = await fetch(url(target) + "?kind=main", {cache:"no-store"});
+      if(!r.ok) throw new Error(target + " returned " + r.status);
+      const blob = await r.blob();
+      if(!blob.size) throw new Error("the camera returned an empty file");
+      const name = target.split("/").pop() || "groundglass.jpg";
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      a.download = name; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 8000);
+      ok("Downloaded " + name + ", " + blob.size + " bytes.");
+      return { bytes: blob.size, name, jpeg: /jpe?g$/i.test(name) };
+    },
+
+    isRecording(){ return !!this._rec; },
+    async setRecording(on){
+      const p = pathFor("shooting/control", "recbutton");
+      if(!p){ err("This body does not offer a movie button endpoint."); return false; }
+      if(!readable){ err("Recording cannot be controlled while replies are unreadable."); return false; }
+      await jpost(p, { action: on ? "start" : "stop" });
+      this._rec = on;
+      ok(on ? "Recording started." : "Recording stopped.");
+      return true;
+    },
+
+    async focusNow(){
+      const p = pathFor("shooting/control", "af");
+      if(!p) return [{name:"Autofocus", pass:false, note:"this body does not offer an autofocus endpoint"}];
+      if(!readable) return [{name:"Autofocus", pass:false, note:"replies cannot be read from this origin"}];
+      try{ await jpost(p, {action:"start"}); return [{name:"Autofocus", pass:true, note:"the camera ran autofocus"}]; }
+      catch(e){ return [{name:"Autofocus", pass:false, note:e.message}]; }
+    },
+
+    intervalRunning(){ return inter.running(); },
+    stopInterval(reason){ inter.stop(reason); },
+    startInterval(every, frames, onTick){ return inter.start(every, frames, onTick); }
   };
 })();
 
@@ -2748,6 +3057,9 @@ function refresh(){
   if(CAM.battery !== null){
     battEl.textContent = "BATT " + CAM.battery + "%";
     battEl.title = "Read as a percentage from the standard battery level property.";
+  } else if(CAM.link === "aether" && AetherLink.batteryWord()){
+    battEl.textContent = "BATT " + String(AetherLink.batteryWord()).toUpperCase();
+    battEl.title = "The camera reports the battery in words rather than as a number.";
   } else if(CAM.batteryLevel !== null){
     battEl.textContent = "BATT LEVEL " + CAM.batteryLevel;
     battEl.title = "The body reports a coarse level here rather than a percentage. It is not a percent and is not shown as one.";
@@ -2811,8 +3123,8 @@ $("release").addEventListener("click", async ()=>{
   try{
     const made = await ACTIVE.release(false);
     if(made) say("Released.");
-    if(made && $("chkAutoDl").checked && CAM.link === "wire"){
-      try{ await WireLink.downloadObject(); }catch(e){ err("Download failed: " + e.message); }
+    if(made && $("chkAutoDl").checked && CAP().downloadObject){
+      try{ await CAP().downloadObject(); }catch(e){ err("Download failed: " + e.message); }
     }
   }
   catch(e){ err("Release failed: "+e.message); }
@@ -2926,32 +3238,37 @@ $("btnRelProbe").addEventListener("click", async ()=>{
   say("");
 });
 $("btnFocusNow").addEventListener("click", async ()=>{
-  if(CAM.link !== "wire" || !CAM.canControl){ err("Autofocus needs the WIRE link connected."); return; }
-  try{ showRows("Focus", await WireLink.focusNow()); }
+  if(!CAM.canControl){ err("Autofocus needs a connected link with a control path."); return; }
+  try{ showRows("Focus", await CAP().focusNow()); }
   catch(e){ err("Autofocus failed: " + e.message); }
 });
 
 $("btnRecord").addEventListener("click", async ()=>{
-  const on = !WireLink.isRecording();
+  const on = !CAP().isRecording();
   try{
-    await WireLink.setRecording(on);
-    $("btnRecord").textContent = WireLink.isRecording() ? "STOP RECORDING" : "START RECORDING";
-    $("btnRecord").classList.toggle("primary", WireLink.isRecording());
+    await CAP().setRecording(on);
+    $("btnRecord").textContent = CAP().isRecording() ? "STOP RECORDING" : "START RECORDING";
+    $("btnRecord").classList.toggle("primary", CAP().isRecording());
   }catch(e){ err("Recording: " + e.message); }
 });
 
+/* The capture panel talks to whichever link is carrying, so the same
+   buttons mean the same things over the cable and over the network. */
+function CAP(){ return CAM.link === "aether" ? AetherLink : WireLink; }
+
 $("btnObjProbe").addEventListener("click", async ()=>{
-  try{ showRows("Object probe", await WireLink.probeObject()); }
+  if(!CAP().probeObject){ err("The object probe is a WIRE link tool. Over the network a file is a URL, and DOWNLOAD LAST fetches it."); return; }
+  try{ showRows("Object probe", await CAP().probeObject()); }
   catch(e){ err("Object probe failed: " + e.message); }
 });
 $("btnDownload").addEventListener("click", async ()=>{
-  try{ await WireLink.downloadObject(); }
+  try{ await CAP().downloadObject(); }
   catch(e){ err("Download failed: " + e.message); }
 });
 
 $("btnInterval").addEventListener("click", ()=>{
-  if(WireLink.intervalRunning()){
-    WireLink.stopInterval("stopped by hand");
+  if(CAP().intervalRunning()){
+    CAP().stopInterval("stopped by hand");
     $("btnInterval").textContent = "START INTERVALOMETER";
     $("btnInterval").classList.remove("primary");
     return;
@@ -2960,9 +3277,9 @@ $("btnInterval").addEventListener("click", ()=>{
   const frames = parseInt($("numFrames").value,10) || 1;
   $("btnInterval").textContent = "STOP INTERVALOMETER";
   $("btnInterval").classList.add("primary");
-  WireLink.startInterval(every, frames, (st)=>{
+  CAP().startInterval(every, frames, (st)=>{
     $("valMade").textContent = st ? (st.made + " of " + st.want) : "";
-    if(!WireLink.intervalRunning()){
+    if(!CAP().intervalRunning()){
       $("btnInterval").textContent = "START INTERVALOMETER";
       $("btnInterval").classList.remove("primary");
     }
@@ -3014,9 +3331,20 @@ $("btnWireInfo").addEventListener("click", ()=>{
 });
 $("selEvf").addEventListener("change", ()=>{ log("Live view routing takes effect on the next connect."); });
 $("chkCcBlind").addEventListener("change", e=>AetherLink.setBlind(e.target.checked));
-$("btnCcProbe").addEventListener("click", async ()=>{ await AetherLink.probe($("txtHost").value.trim()); });
+$("btnCcApi").addEventListener("click", async ()=>{
+  log("Asking the camera what it supports ...");
+  try{ showRows("Camera API", await AetherLink.apiReport()); }
+  catch(e){ err("Could not read the API map: " + e.message); }
+});
+$("btnCcProbe").addEventListener("click", async ()=>{
+  const r = await AetherLink.probe($("txtHost").value.trim());
+  if(r && r.rows) showRows("Network probe", r.rows);
+});
 $("btnCcOpen").addEventListener("click", async ()=>{
-  try{ await AetherLink.open($("txtHost").value.trim()); }
+  const h = $("txtHost").value.trim();
+  if(!h){ err("Enter the camera address first."); return; }
+  log("Opening the AETHER link to " + h + " ...");
+  try{ await AetherLink.open(h); }
   catch(e){ err("AETHER link failed: "+e.message); }
   refresh();
 });
@@ -3124,11 +3452,15 @@ function currentSession(){
     view: JSON.parse(JSON.stringify(VIEW))
   };
 }
+/* The discovered sequence is the most expensive thing this instrument
+   learns, since finding it costs a sweep and a few frames of film that
+   is not film. It should not be thrown away by closing a tab. */
 function applySession(s){
   if(s.theme){ document.documentElement.setAttribute("data-theme", s.theme); $("theme").value = s.theme; }
   if("muted" in s){ SND.muted = s.muted; $("btnMute").textContent = s.muted?"MUTED":"SOUND"; $("btnMute").setAttribute("aria-pressed",String(s.muted)); }
   if("debug" in s){ LOG.debug = s.debug; $("chkDebug").checked = s.debug; }
   if(s.host){ $("txtHost").value = s.host; }
+  if(s.strategy){ WireLink.setReleaseStrategy(s.strategy); log("Release sequence remembered from the session: " + s.strategy + "."); }
   if(s.scene){ $("selScene").value = s.scene; BenchLink.setScene(s.scene); }
   if(s.strategy){ WireLink.setStrategy(s.strategy); }
   if(s.declaredAv){ DECLARED.av = s.declaredAv; const d = $("selDeclAv"); if(d) d.value = s.declaredAv; }
@@ -3383,6 +3715,87 @@ function runTests(){
     const src = WireLink.setProp.toString();
     return src.indexOf("chooses the") >= 0 || "a setting the mode holds still reports as a failed write";
   });
+  T("the sequence that produced a frame is tried early", ()=>{
+    const ids = WireLink.strategies().map(s=>s.id);
+    return ids.indexOf("single-op") === 1
+      || ("the single shot opcode sits at index " + ids.indexOf("single-op"));
+  });
+  T("a discovered sequence can be restored", ()=>{
+    const was = WireLink.releaseStrategy();
+    const okSet = WireLink.setReleaseStrategy("single-op");
+    const back = WireLink.releaseStrategy();
+    WireLink.setReleaseStrategy(was);
+    return (okSet && back === "single-op") || "a remembered sequence cannot be put back";
+  });
+  T("a made up sequence is refused", ()=>
+    WireLink.setReleaseStrategy("no-such-sequence") === false || "any string is accepted as a sequence");
+  T("the session carries the discovered sequence", ()=>{
+    const src = applySession.toString();
+    return src.indexOf("setReleaseStrategy") >= 0 || "a saved session forgets what the sweep cost";
+  });
+  T("the probe says what it is doing when pressed", ()=>
+    AetherLink.probe.toString().indexOf("Probing ") >= 0 || "the probe is silent on press");
+  T("a probe with no address says so instead of trying", ()=>
+    AetherLink.probe.toString().indexOf("Enter the address") >= 0 || "an empty address is sent to the network");
+  T("the probe separates a blocked reply from an unreachable camera", ()=>{
+    const src = AetherLink.probe.toString();
+    return (src.indexOf("Picture arrives") >= 0 && src.indexOf("unlikely to be a browser rule") >= 0)
+      || "both failures still get the same explanation";
+  });
+  T("an unreachable camera is blamed on the cable first", ()=>{
+    const src = AetherLink.probe.toString();
+    return src.indexOf("Unplug the USB cable") >= 0
+      || "the most common cause of a silent camera is not mentioned";
+  });
+  T("an address typed the way the camera shows it is accepted", ()=>{
+    const f = AetherLink._normalise;
+    return (f("192.168.1.5:8080") === "http://192.168.1.5:8080"
+         && f("192.168.1.5") === "http://192.168.1.5:8080"
+         && f("http://192.168.1.5:8080/") === "http://192.168.1.5:8080"
+         && f("https://cam.local:443") === "https://cam.local:443")
+      || ("normalised to " + f("192.168.1.5:8080"));
+  });
+  T("both links share one intervalometer", ()=>{
+    const a = WireLink.startInterval.toString(), b = AetherLink.startInterval.toString();
+    return (a.indexOf("wireInterval.start") >= 0 && b.indexOf("inter.start") >= 0)
+      || "one of the links still has its own copy";
+  });
+  T("the shared intervalometer stops on a frame that did not appear", ()=>{
+    const src = makeIntervalometer.toString();
+    return src.indexOf("keep firing blind") >= 0 || "it would keep firing at an uncooperative body";
+  });
+  T("the network link answers the same capture interface as the cable", ()=>{
+    for(const m of ["release","setProp","downloadObject","setRecording","focusNow",
+                    "startInterval","stopInterval","intervalRunning","isRecording"]){
+      if(typeof AetherLink[m] !== "function") return "AETHER is missing " + m;
+      if(typeof WireLink[m] !== "function") return "WIRE is missing " + m;
+    }
+    return true;
+  });
+  T("the capture panel follows the active link", ()=>{
+    const save = CAM.link;
+    CAM.link = "aether"; const a = CAP();
+    CAM.link = "wire";   const w = CAP();
+    CAM.link = save;
+    return (a === AetherLink && w === WireLink) || "the panel is wired to one link";
+  });
+  T("the network link only calls endpoints the camera describes", ()=>{
+    const src = AetherLink.setProp.toString() + AetherLink.release.toString();
+    return src.indexOf("pathFor") >= 0 || "paths are still hard coded rather than discovered";
+  });
+  T("a blind shutter claims nothing", ()=>{
+    const src = AetherLink.release.toString();
+    return src.indexOf("cannot be read from here") >= 0 || "a blind release could report a frame it cannot see";
+  });
+  T("a network release waits for a new file", ()=>{
+    const src = AetherLink.release.toString();
+    return (src.indexOf("pollEvents") >= 0 && src.indexOf("no new file appeared") >= 0)
+      || "the network release trusts the acknowledgement";
+  });
+  T("a battery word is never shown as a number", ()=>{
+    const src = refresh.toString();
+    return src.indexOf("batteryWord") >= 0 || "a worded battery level has nowhere to go";
+  });
   T("a settings write gets the pipe to itself", ()=>{
     const src = WireLink.setProp.toString();
     return (src.indexOf("pumpHeld = true") >= 0 && src.indexOf("waitUntilReady") >= 0)
@@ -3523,18 +3936,19 @@ function runTests(){
     const src = WireLink._internals.setPropPayload.toString();
     return src.indexOf("WRITABLE_PROPS") >= 0 || "the guard is not on the payload builder";
   });
-  T("the intervalometer stops itself when a frame does not appear", ()=>{
-    const src = WireLink.startInterval.toString();
-    return (src.indexOf("stopInterval") >= 0 && src.indexOf("keep firing blind") >= 0)
-      || "the intervalometer would keep firing at an uncooperative body";
-  });
   T("the intervalometer goes through the ordinary release path", ()=>{
-    const src = WireLink.startInterval.toString();
-    return src.indexOf("self.release(") >= 0 || "the intervalometer has its own release and can drift from the button";
+    const src = makeIntervalometer.toString();
+    return src.indexOf("getLink().release(") >= 0
+      || "the intervalometer has its own release and can drift from the button";
   });
   T("stopping the intervalometer clears its timer", ()=>{
-    const src = WireLink.stopInterval.toString();
+    const src = makeIntervalometer.toString();
     return src.indexOf("clearTimeout") >= 0 || "a stopped intervalometer could still fire once more";
+  });
+  T("each link hands the intervalometer its own release", ()=>{
+    const w = makeIntervalometer(() => WireLink), a = makeIntervalometer(() => AetherLink);
+    return (w.running() === false && a.running() === false && typeof w.start === "function")
+      || "the shared intervalometer does not start clean";
   });
   T("recording is confirmed by the body, not assumed", ()=>{
     const src = WireLink.setRecording.toString();
@@ -3848,7 +4262,7 @@ function runTests(){
   T("a made up strategy is refused", ()=> WireLink.setStrategy("do-whatever") === false);
   T("the two stage press is tried first", ()=>{
     const st = WireLink.strategies();
-    return st[0].id === "two-stage-af" && st[1].id === "two-stage-slow";
+    return st[0].id === "two-stage-af" && st[1].id === "single-op";
   });
   T("every release strategy is well formed", ()=>{
     for(const st of WireLink.strategies()){
