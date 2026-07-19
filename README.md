@@ -1,11 +1,11 @@
 # GROUND GLASS
 
-Field Instrument FI-122. Version 0.21.3.
+Field Instrument FI-122. Version 0.22.0.
 
 A single file console that puts a Canon EOS R6 on the bench: a monitor with real
 scopes, and the camera's own knobs.
 
-Open `groundglass-v0.21.3.html` by double clicking it. No server, no build step,
+Open `groundglass-v0.22.0.html` by double clicking it. No server, no build step,
 no dependencies, no network access. It works from `file://` and it works with
 the network cable pulled.
 
@@ -126,7 +126,7 @@ middle.
 
 ## Self test
 
-179 assertions, in the app, on demand. Exposure arithmetic against known answers,
+182 assertions, in the app, on demand. Exposure arithmetic against known answers,
 the Canon value tables, the PTP container codec, live view chunk extraction,
 event stream parsing against malformed input, the container splitter against
 split and malformed transfers, the DeviceInfo parser, the response code table,
@@ -373,21 +373,26 @@ camera.
 
 ## Known limitations
 
-- WIRE is written against the published Canon EOS PTP extensions and has not yet
-  been proven against an R6. Run BENCH TEST and treat every write as unverified
-  until those rows are green.
-- The bench test writes ISO back to the value it already holds. That proves the
-  write path without changing anything on the body, but it does not prove that a
-  write to a different value is accepted in every camera mode.
+- Image download over WIRE does not work on the R6 this was developed against.
+  Every transfer route answers a general error on the same handle. OBJECT PROBE
+  is there to find out whether the body recognises the handle at all, which is
+  the next thing to establish.
+- WIRE and AETHER generally cannot both be live. Most Canon bodies switch off
+  their network while a computer is attached over USB. GLASS plus WIRE is the
+  combination that works on one machine.
+- The focus point cannot be set from here. Only properties with a confirmed
+  payload layout are written, and the focus point is not one of them. Setting it
+  from a guessed layout faulted a camera once and will not be attempted again.
+- Which release sequence a body honours has to be discovered. RELEASE PROBE
+  finds it and the saved session remembers it. On the R6 here it is the older
+  single shot opcode, not the two stage press.
 - PTP live view is a polled JPEG, so it is a slideshow next to the GLASS link.
   This is a property of the protocol, not of the implementation.
-- AETHER control depends on whether the camera tolerates a simple request. If it
-  does not, live view still works and the knobs do not.
-- Focus stacking and focus bracketing are not in this version.
-- The focus point cannot be set from here. Only properties with a confirmed
-  payload layout are written, and the focus point is not one of them.
+- AETHER control depends on whether the browser will let replies be read from
+  the camera. If it will not, live view still works and the knobs do not.
 - Video recording is started and stopped by property write. Bodies that require
   the mode dial to be on the movie position will decline it.
+- Focus stacking and focus bracketing are not in this version.
 - The scopes read the preview, not the sensor.
 - WebUSB permission does not persist across sessions from `file://`, so the
   device picker appears on every connect.
@@ -395,6 +400,17 @@ camera.
   tables are logged rather than guessed at.
 
 ## Changelog
+
+- **0.22.0** Cleanup pass. Opcodes and property codes that were defined but
+  never sent are removed, along with a dead element and an empty note, and a
+  new assertion fails the build if any code in either table goes unused. That
+  matters beyond tidiness: an unused constant is an invitation to send it, which
+  is exactly how the focus point faulted a camera. The one unused opcode worth
+  keeping was given a job instead: the camera is now told to stay awake every
+  thirty seconds, because a body that has gone to sleep looks precisely like a
+  body that has stopped answering, and that costs an hour to diagnose. Known
+  limitations rewritten to say what is actually true after a day of bench work.
+  182 assertions.
 
 - **0.21.3** A full sweep of ten sequences on an R6 produced exactly one frame,
   and it came from the older single shot opcode rather than from anything built
