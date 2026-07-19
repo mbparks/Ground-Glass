@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GroundGlass :: groundglass-v0.21.3.html :: v0.21.3 -->
+<!-- GroundGlass :: groundglass-v0.23.0.html :: v0.23.0 -->
 <html lang="en" data-theme="darkcloth">
 <head>
 <meta charset="utf-8">
@@ -222,7 +222,7 @@ ul.tight li{margin:2px 0}
 <header class="bar">
   <div class="brand">
     <span class="nm">GROUND GLASS</span>
-    <span class="fi">FI-122 &middot; <span id="verLabel">v0.21.3</span></span>
+    <span class="fi">FI-122 &middot; <span id="verLabel">v0.23.0</span></span>
   </div>
 
   <div class="links" role="group" aria-label="Camera link">
@@ -354,7 +354,7 @@ ul.tight li{margin:2px 0}
 
     <details class="sect">
       <summary>LINK</summary>
-      <div class="body" id="linkBody">
+      <div class="body">
         <div id="paneBench">
           <p class="small">The bench link runs a synthetic scene and a simulated camera so the whole console, the scopes, and the self tests work with nothing plugged in.</p>
           <div class="row"><label for="selScene">Scene</label><select id="selScene">
@@ -372,7 +372,6 @@ ul.tight li{margin:2px 0}
             <button class="btn" id="btnCamScan">SCAN</button>
             <button class="btn primary" id="btnCamOpen">OPEN</button>
           </div>
-          <p class="small" id="glassNote" style="margin-top:8px"></p>
         </div>
 
         <div id="paneWire" hidden>
@@ -431,7 +430,7 @@ ul.tight li{margin:2px 0}
           </div>
           <button class="btn wide" id="btnCcApi" style="margin-top:6px">API MAP</button>
           <p class="small">CCAPI describes itself: the camera hands back every endpoint it supports. This link only calls what the body has said exists, so nothing here is guesswork. API MAP shows you the list.</p>
-          <p class="small" id="ccNote" style="margin-top:8px">The camera sends no cross origin headers, so this page can always <em>show</em> the live view but may not be able to <em>read</em> replies. PROBE finds out which half works from here.</p>
+          <p class="small" style="margin-top:8px">The camera sends no cross origin headers, so this page can always <em>show</em> the live view but may not be able to <em>read</em> replies. PROBE finds out which half works from here.</p>
           <div class="row"><label for="chkCcBlind">Blind control</label><input type="checkbox" id="chkCcBlind"></div>
           <p class="small">Blind control sends commands the camera will act on but whose replies cannot be read back. Settings shown in the console are then a guess, not a readback.</p>
         </div>
@@ -466,7 +465,7 @@ ul.tight li{margin:2px 0}
   <div class="db">
     <dl class="kv">
       <dt>Instrument</dt><dd>GROUND GLASS, Field Instrument FI-122</dd>
-      <dt>Version</dt><dd id="aboutVer">v0.21.3</dd>
+      <dt>Version</dt><dd id="aboutVer">v0.23.0</dd>
       <dt>License</dt><dd>GPL-3.0</dd>
       <dt>Runs</dt><dd>From disk. No server, no build step, no dependencies.</dd>
     </dl>
@@ -503,7 +502,7 @@ ul.tight li{margin:2px 0}
 <script>
 "use strict";
 /* =================================================================
-   GROUND GLASS (FI-122)  v0.21.3
+   GROUND GLASS (FI-122)  v0.23.0
    A single file console that puts a Canon EOS R6 on the bench:
    a monitor with real scopes, and the camera's own knobs.
 
@@ -516,7 +515,7 @@ ul.tight li{margin:2px 0}
    No server. No build step. No libraries. Runs from file://.
    ================================================================= */
 
-const VERSION = "0.21.3";
+const VERSION = "0.23.0";
 const $ = (id) => document.getElementById(id);
 const clamp = (v,a,b) => v<a?a:(v>b?b:v);
 
@@ -612,7 +611,7 @@ const EC = {0xe8:"-3",0xeb:"-2 2/3",0xec:"-2 1/2",0xed:"-2 1/3",0xf0:"-2",0xf3:"
 
 /* Canon EOS device property codes */
 const PROP = { AV:0xd101, TV:0xd102, ISO:0xd103, EC:0xd104, MODE:0xd105, DRIVE:0xd107,
-  AFMODE:0xd108, WB:0xd10c, KELVIN:0xd10e, BATTERY:0xd111, EVF_OUT:0xd1b0, EVF_MODE:0xd1b3,
+  AFMODE:0xd108, WB:0xd10c, BATTERY:0xd111, EVF_OUT:0xd1b0,
   AVAILSHOTS:0xd11b, CAPTURE_DEST:0xd11c, RECORD:0xd1b8 };
 /* The viewfinder focus point property is deliberately absent. Its
    payload layout is not confirmed, writing a guess at it faulted an R6,
@@ -784,6 +783,7 @@ const BenchLink = (function(){
     }
   };
 })();
+
 function uniq(v,i,a){ return a.indexOf(v)===i; }
 
 /* ---------------- GLASS: HDMI capture --------------------------- */
@@ -834,13 +834,13 @@ const GlassLink = (function(){
 /* ---------------- WIRE: Canon PTP over WebUSB ------------------- */
 const PTPC = { CMD:1, DATA:2, RESP:3, EVENT:4 };
 const OP = { OpenSession:0x1002, CloseSession:0x1003, GetDeviceInfo:0x1001, SetDevicePropValue:0x1016,
-  GetDevicePropDesc:0x1014, GetDevicePropValue:0x1015, GetObject:0x1009, GetObjectInfo:0x1008,
+  GetDevicePropDesc:0x1014, GetDevicePropValue:0x1015, GetObject:0x1009, GetObjectHandles:0x1007, GetObjectInfo:0x1008,
   // Canon numbers its own object transfer separately from the standard
   // set, and the transfer complete acknowledgement is 0x9117, not the
   // 0x9019 used here before, which is a different vendor's opcode.
   EOS_GetObject:0x9104, EOS_GetObjectInfoEx:0x9109, EOS_GetPartialObject:0x9107,
-  EOS_TransferComplete:0x9117, EOS_CancelTransfer:0x9118, EOS_GetStorageIDs:0x9101,
-  EOS_DoAf:0x9154, EOS_AfCancel:0x9157, EOS_DriveLens:0x9155,
+  EOS_TransferComplete:0x9117, EOS_GetStorageIDs:0x9101,
+  EOS_DoAf:0x9154,
   EOS_SetRemoteMode:0x9114, EOS_SetEventMode:0x9115, EOS_GetEvent:0x9116,
   EOS_SetDevicePropValueEx:0x9110, EOS_GetViewFinderData:0x9153,
   EOS_RemoteReleaseOn:0x9128, EOS_RemoteReleaseOff:0x9129,
@@ -1006,7 +1006,7 @@ const WireLink = (function(){
   let pollMs = 120, rxBuf = new Uint8Array(0), info = null, releaseOp = null, hex = false;
   let liveHeld = false, pumpHeld = false, tapUntil = 0;
   let objEvents = 0, strategy = null, capacityPrimed = false, writeForm = null, failures = 0;
-  let lastObject = null, recording = false, interval = null;
+  let lastObject = null, recording = false, interval = null, knownHandles = [], lastEmptyEvent = null;
   /* The code the body last answered with. A tolerated answer still gets
      recorded here, because "we agreed not to throw on this" is not the
      same as "the camera did it", and reporting the second when only the
@@ -1179,10 +1179,22 @@ const WireLink = (function(){
         }
       } else if(OBJECT_EVENTS.indexOf(type) >= 0){
         objEvents++; seen++;
-        // The record carries the handle of the file the body just wrote,
-        // which is the only way to ask for it afterwards.
+        /* Not every object event names a file. A 12 byte record with a
+           zero where the handle should be is the body saying that
+           something happened, not handing over a way to ask for it, and
+           an R6 writing stills to its card sends exactly that. Treating
+           it as a handle meant asking the camera for object zero, which
+           it refused with a general error, over and over, all evening.
+
+           So a record only becomes a target when it carries a handle
+           that is actually a handle. */
         if(size >= 12){
           const handle = dv.getUint32(o+8, true);
+          if(!handle){
+            lastEmptyEvent = { type, raw: buf.slice(o, o + Math.min(size, 96)), at: Date.now() };
+            dbg("object event 0x" + type.toString(16) + ": a file was made, but the record names no handle");
+            o += size; continue;
+          }
           let bytes = null, name = null;
           if(size >= 24) bytes = dv.getUint32(o+20, true);
           if(size > 32){
@@ -1241,6 +1253,57 @@ const WireLink = (function(){
     if(lbl !== undefined) CAM[t.key].value = lbl;
     else dbg("unmapped " + (PROPNAME[pc]||pc) + " value 0x" + val.toString(16));
   }
+  /* A PTP array is a 32 bit count followed by that many 32 bit values. */
+  function parseHandleArray(buf){
+    if(!buf || buf.length < 4) return [];
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    const n = dv.getUint32(0, true);
+    const out = [];
+    for(let i = 0; i < n && (4 + i*4 + 4) <= buf.byteLength; i++) out.push(dv.getUint32(4 + i*4, true));
+    return out;
+  }
+
+  /* The standard object description. Fixed fields, then the filename as
+     a PTP string: one byte of length in characters, then UTF-16. This is
+     read only and documented, which is why it is safe to parse where a
+     focus point payload was not safe to invent. */
+  const OBJ_FORMATS = { 0x3000:"", 0x3001:"", 0x3801:".jpg", 0x3808:".jpg", 0x300a:".tif",
+    0xb101:".cr2", 0xb103:".cr3", 0xb104:".cr3", 0x300c:".mov", 0xb002:".cr2",
+    0x300d:".avi", 0x300e:".mpg", 0xb982:".mov", 0x380b:".png", 0x3811:".heif" };
+  function parseObjectInfo(buf){
+    if(!buf || buf.length < 53) return null;
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    const out = { format: dv.getUint16(4, true), bytes: dv.getUint32(8, true), name: null };
+    const n = buf[52];
+    if(n && 53 + n*2 <= buf.byteLength){
+      let str = "";
+      for(let i = 0; i < n; i++){
+        const c = dv.getUint16(53 + i*2, true);
+        if(!c) break;
+        str += String.fromCharCode(c);
+      }
+      if(/^[\x20-\x7e]+$/.test(str)) out.name = str;
+    }
+    return out;
+  }
+
+  /* What the first bytes say the file is, for when the body will not
+     say. A movie is not a JPEG and should not be handed over as one,
+     and neither should be called .bin because nothing was checked. */
+  function sniffExtension(d){
+    if(d.length > 3 && d[0] === 0xff && d[1] === 0xd8) return ".jpg";
+    if(d.length > 11 && d[4] === 0x66 && d[5] === 0x74 && d[6] === 0x79 && d[7] === 0x70){
+      const brand = String.fromCharCode(d[8], d[9], d[10], d[11]);
+      if(/^crx/i.test(brand)) return ".cr3";
+      if(/^(qt|mov)/i.test(brand)) return ".mov";
+      if(/^heic|^heif|^mif1/i.test(brand)) return ".heif";
+      return ".mp4";
+    }
+    if(d.length > 3 && d[0] === 0x89 && d[1] === 0x50) return ".png";
+    if(d.length > 3 && ((d[0] === 0x49 && d[1] === 0x49) || (d[0] === 0x4d && d[1] === 0x4d))) return ".cr2";
+    return ".bin";
+  }
+
   function extractJpeg(buf){
     if(!buf || buf.length < 8) return null;
     const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
@@ -1327,7 +1390,7 @@ const WireLink = (function(){
     return { ok:false, exact:false, value:before };
   }
 
-  let battAt = 0;
+  let battAt = 0, awakeAt = 0;
   async function pumpEvents(){
     if(!dev) return;
     // During a release the confirmation loop is already polling events.
@@ -1335,6 +1398,14 @@ const WireLink = (function(){
     if(pumpHeld){ evPoll = setTimeout(pumpEvents, 150); return; }
     try{ parseEvents(await transact(OP.EOS_GetEvent, null, null, {retries:0})); }
     catch(e){ dbg("event poll: " + e.message); }
+    // A camera that goes to sleep looks exactly like a camera that has
+    // stopped answering, and that has cost enough diagnosis today. This
+    // is the one thing on the console that tells the body to stay awake.
+    if(!liveHeld && !pumpHeld && Date.now() - awakeAt > 30000){
+      awakeAt = Date.now();
+      try{ await transact(OP.EOS_KeepDeviceOn, null, null, {retries:0, tolerate:[0x2005,0x2019,0xa102]}); }
+      catch(e){ dbg("keep awake: " + e.message); }
+    }
     if(!liveHeld && !pumpHeld && Date.now() - battAt > 20000){
       battAt = Date.now();
       try{ await WireLink.readBatteryPercent(); }catch(e){}
@@ -1403,14 +1474,34 @@ const WireLink = (function(){
       await dev.claimInterface(iface);
       log("USB interface " + iface + " (class " + found.cls + ") claimed, endpoints in " + epIn + " out " + epOut);
 
-      for(const [name, fn] of STEPS){
-        try{ const note = await fn(); ok("  " + name + ": " + note); }
-        catch(e){
-          err("  " + name + " failed: " + e.message);
-          err("WIRE handshake stopped at: " + name + ". Turn on the debug log and the hex trace, then send both.");
-          throw e;
+      /* A body left mid conversation by a previous session, or by a
+         recording that was still finishing, will refuse the handshake
+         until its USB side is reset. That is a stuck pipe rather than a
+         broken camera, and it is worth one attempt to clear before
+         handing the problem back. Reset, then run the same steps again,
+         once only: a retry loop against a genuinely faulted body just
+         hides the fault. */
+      let reset = false;
+      for(let attempt = 0; attempt < 2; attempt++){
+        let failed = null;
+        for(const [name, fn] of STEPS){
+          try{ const note = await fn(); ok("  " + name + ": " + note); }
+          catch(e){ failed = { name, e }; break; }
         }
+        if(!failed) break;
+        if(attempt === 0 && typeof dev.reset === "function"){
+          err("  " + failed.name + " failed: " + failed.e.message);
+          log("Resetting the USB side of the camera and trying the handshake once more. This clears a pipe left open by a previous session or by a recording that was still finishing.");
+          try{ await dev.reset(); reset = true; await new Promise(r=>setTimeout(r,600)); }
+          catch(e2){ dbg("usb reset: " + e2.message); }
+          if(reset) continue;
+        }
+        err("  " + failed.name + " failed: " + failed.e.message);
+        err("WIRE handshake stopped at: " + failed.name + (reset ? ", and again after a USB reset." : "."));
+        log("Switch the camera off and on, and if it was recording, let it finish writing first. If it still stops at the same step, turn on the debug log and the hex trace and send both.");
+        throw failed.e;
       }
+      if(reset) ok("The handshake completed after a USB reset.");
       // Everything the first press used to accomplish as a side effect of
       // failing. A press should find the body ready, not make it ready.
       await this.clearPress();
@@ -1799,22 +1890,34 @@ const WireLink = (function(){
     lastObject(){ return lastObject; },
     async downloadObject(obj){
       const target = obj || lastObject;
+      if(!target && lastEmptyEvent){
+        throw new Error("The camera announced a new file and did not name it: the event record was " +
+          hexdump(lastEmptyEvent.raw, 12) + ", which is an announcement with no handle in it. " +
+          "A body writing only to its own card sends exactly that, because there is nothing queued for the host to ask for. " +
+          "Set Images go to so it includes this computer, then take a NEW frame, and the announcement will carry a handle.");
+      }
       if(!target) throw new Error("no file has been reported by the body yet");
+      if(!target.handle) throw new Error("that file was announced without a handle, so there is nothing to ask for");
       /* Three ways to ask, in the order a Canon body is most likely to
          answer. The whole object fetch in the standard set is last
          because these bodies routinely decline it. Whichever works is
          reported, so the log says how the file actually arrived. */
       let data = null, how = "";
       const CH = 0x100000;
+      /* Each route takes the handle it should ask for. The previous
+         version closed over one handle, so the fallback that was meant
+         to try a different one quietly asked for the same file three
+         more times. A fallback that cannot vary the thing it is falling
+         back on is not a fallback. */
       const routes = [
-        { name:"Canon whole object", run: async () => await transact(OP.EOS_GetObject, [target.handle]) },
-        { name:"Canon partial reads", run: async () => {
+        { name:"Canon whole object", run: async (h) => await transact(OP.EOS_GetObject, [h]) },
+        { name:"Canon partial reads", run: async (h, declared) => {
             const parts = []; let total = 0;
-            const cap = target.bytes || 200 * 1024 * 1024;
+            const cap = declared || 200 * 1024 * 1024;
             for(let off = 0; off < cap; off += CH){
-              const want = target.bytes ? Math.min(CH, target.bytes - off) : CH;
+              const want = declared ? Math.min(CH, declared - off) : CH;
               if(want <= 0) break;
-              const part = await transact(OP.EOS_GetPartialObject, [target.handle, off, want]);
+              const part = await transact(OP.EOS_GetPartialObject, [h, off, want]);
               if(!part || !part.length) break;
               parts.push(part); total += part.length;
               if(part.length < want) break;
@@ -1824,33 +1927,109 @@ const WireLink = (function(){
             for(const p2 of parts){ out.set(p2, at); at += p2.length; }
             return out;
           } },
-        { name:"standard whole object", run: async () => await transact(OP.GetObject, [target.handle]) }
+        { name:"standard whole object", run: async (h) => await transact(OP.GetObject, [h]) }
       ];
       const tried = [];
+      let usedHandle = target.handle;
       for(const r of routes){
         try{
-          const got = await r.run();
+          const got = await r.run(target.handle, target.bytes);
           if(got && got.length){ data = got; how = r.name; break; }
           tried.push(r.name + " returned nothing");
         }catch(e){ tried.push(r.name + ": " + e.message); }
       }
+      /* Every route refused the handle from the event record. Ask the
+         body for its own list and work backwards through the newest few.
+
+         The previous version did this inside a try that only whispered
+         into the debug log, so when it found nothing it said nothing and
+         the report read as though the fallback had never run. A silent
+         diagnostic is worse than no diagnostic: it looks like evidence.
+         Whatever happens here now ends up in the report. */
+      let listNote = "";
+      if(!data){
+        let list = null;
+        try{
+          list = parseHandleArray(await transact(OP.GetObjectHandles, [0xffffffff, 0, 0]));
+        }catch(e){
+          listNote = "The body refused to list its objects at all: " + e.message +
+            ".  A camera that will not enumerate is not going to transfer.";
+        }
+        if(list){
+          if(!list.length){
+            // An EOS body in remote release mode routinely enumerates
+            // nothing here, because Canon keeps its own object world
+            // separate from the standard one. So this is worth knowing
+            // and is not on its own proof of anything.
+            listNote = "The body enumerates no objects through the standard list. That is normal for an EOS in remote mode " +
+              "and does not by itself mean the frame cannot be collected: Canon keeps its own object world separate from the standard one.";
+          } else {
+            const inList = list.indexOf(target.handle) >= 0;
+            listNote = "The body lists " + list.length + " object(s). The handle from the event record, 0x" +
+              target.handle.toString(16) + ", is " + (inList ? "among them, so the parse is right and the refusal is the camera's own."
+                                                            : "NOT among them, so the event record is being read at the wrong offset for this kind of file.");
+            const candidates = list.slice(-4).reverse().filter(h => h !== target.handle);
+            if(candidates.length){
+              log("Working back through the " + candidates.length + " newest handles the body itself lists.");
+              for(const h of candidates){
+                for(const r of routes){
+                  try{
+                    const got = await r.run(h, 0);
+                    if(got && got.length){
+                      data = got; usedHandle = h;
+                      how = r.name + " on handle 0x" + h.toString(16) + " from the body's own list";
+                      err("The event handle was refused and 0x" + h.toString(16) +
+                          " from the camera's own list worked. The object record is being read at the wrong offset for this kind of file.");
+                      break;
+                    }
+                  }catch(e){ dbg("handle 0x" + h.toString(16) + " via " + r.name + ": " + e.message); }
+                }
+                if(data) break;
+              }
+              if(!data) listNote += "  Every one of those handles was refused too.";
+            }
+          }
+        }
+      }
+
       if(!data){
         err("None of the transfer routes worked. " + tried.join("; ") + ".");
+        if(listNote) err(listNote);
+        if(lastObject && lastObject.raw){
+          log("The object record this handle was read from: " + hexdump(lastObject.raw, 40));
+        }
         throw new Error("the body would not hand over that file. If the camera is set to keep images on the card only, " +
           "there is nothing queued for the host to collect. Set Images go to so it includes this computer, then take a NEW frame. " +
           "A handle from a frame already written to the card cannot be collected afterwards. OBJECT PROBE will say whether the body even recognises this handle.");
       }
 
       if(!data || !data.length) throw new Error("the body returned no bytes for that file");
-      try{ await transact(OP.EOS_TransferComplete, [target.handle], null,
+      try{ await transact(OP.EOS_TransferComplete, [usedHandle], null,
         {retries:0, tolerate:[0x2005,0x2016,0x2002]}); }catch(e){ dbg("transfer complete: " + e.message); }
-      const jpeg = data[0] === 0xff && data[1] === 0xd8;
-      const name = target.name || ("groundglass-" + target.handle.toString(16) + (jpeg ? ".jpg" : ".bin"));
-      const blob = new Blob([data], {type: jpeg ? "image/jpeg" : "application/octet-stream"});
+      // Ask the body what it calls this file before falling back to a
+      // name of our own. It knows, and a file called IMG_1234.MOV is
+      // worth more on disk than a hex handle with .bin on the end.
+      let info = null;
+      try{ info = parseObjectInfo(await transact(OP.GetObjectInfo, [usedHandle], null,
+        {retries:1, tolerate:[0x2002, 0x2005, 0x2009]})); }
+      catch(e){ dbg("object info: " + e.message); }
+
+      const sniffed = sniffExtension(data);
+      const ext = (info && OBJ_FORMATS[info.format]) || sniffed;
+      const name = (info && info.name) || target.name ||
+                   ("groundglass-" + usedHandle.toString(16) + ext);
+      const jpeg = ext === ".jpg";
+      const TYPES = { ".jpg":"image/jpeg", ".png":"image/png", ".mov":"video/quicktime",
+                      ".mp4":"video/mp4", ".heif":"image/heif" };
+      const blob = new Blob([data], {type: TYPES[ext] || "application/octet-stream"});
+      if(ext === ".bin"){
+        log("The first bytes of this file match nothing known, so it is saved as .bin rather than given a name that claims more than is known.");
+      }
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
       a.download = name; a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href), 8000);
-      ok("Downloaded " + name + ", " + data.length + " bytes by " + how + (jpeg ? ", a JPEG" : ""));
+      ok("Downloaded " + name + ", " + data.length + " bytes by " + how +
+         (ext !== ".bin" ? (", " + ext.slice(1).toUpperCase()) : ""));
       return { bytes:data.length, name, jpeg };
     },
 
@@ -1881,6 +2060,33 @@ const WireLink = (function(){
       }catch(e){
         rows.push({name:"Body recognises the handle", pass:false, note:e.message +
           ".  A handle the body will not describe is one it will not send either."});
+      }
+
+      /* The decisive question. The handle above is read at an offset this
+         instrument assumes is right. Asking the body for its own list of
+         object handles takes that assumption out of it: if ours is not
+         in the list, the parse is wrong and every transfer has been
+         asking for a file that does not exist. If it is in the list and
+         still will not transfer, the parse is fine and the refusal is
+         about where the camera was told to put the picture. */
+      lastResp = 0;
+      try{
+        const raw = await transact(OP.GetObjectHandles, [0xffffffff, 0x00000000, 0x00000000]);
+        const list = parseHandleArray(raw);
+        knownHandles = list;
+        const mine = list.indexOf(lastObject.handle) >= 0;
+        rows.push({name:"Handle appears in the body's own list", pass:mine,
+          note: mine
+            ? ("yes, among " + list.length + " objects. The parse is right, so the refusal is about where the picture was sent, not about the handle.")
+            : ("no. The body lists " + list.length + " objects and this is not one of them, which means the handle was read out of the event record at the wrong offset and every transfer so far has asked for a file that does not exist.")});
+        if(list.length){
+          const tail = list.slice(-4).map(h => "0x" + h.toString(16)).join(", ");
+          rows.push({name:"Newest handles the body lists", pass:true,
+            note: tail + ".  DOWNLOAD LAST will fall back to the newest of these if the event handle is refused."});
+        }
+      }catch(e){
+        rows.push({name:"Handle appears in the body's own list", pass:false,
+          note:e.message + ".  Without the list this cannot be settled either way."});
       }
 
       lastResp = 0;
@@ -2208,7 +2414,8 @@ const WireLink = (function(){
     },
     _internals:{ pack, extractJpeg, parseEvents, setPropPayload, takeContainer, parseDeviceInfo, respName, codeFor, hexdump,
       objectCount:()=>objEvents, OBJECT_EVENTS, drainStale,
-      pumpLiveSource: () => pumpLive.toString(), parseEventsSource: () => parseEvents.toString(), reviveSource: () => reviveLive.toString(),
+      parseHandleArray, parseObjectInfo, sniffExtension,
+      pumpLiveSource: () => pumpLive.toString(), pumpEventsSource: () => pumpEvents.toString(), parseEventsSource: () => parseEvents.toString(), reviveSource: () => reviveLive.toString(),
       transactSource: () => transact.toString() }
   };
 })();
@@ -3715,6 +3922,143 @@ function runTests(){
     const src = WireLink.setProp.toString();
     return src.indexOf("chooses the") >= 0 || "a setting the mode holds still reports as a failed write";
   });
+  T("a zero handle is never treated as a file", ()=>{
+    const src = WireLink._internals.parseEventsSource();
+    return (src.indexOf("if(!handle)") >= 0 && src.indexOf("names no handle") >= 0)
+      || "an announcement with no handle would still be asked for";
+  });
+  T("a download refuses to ask for object zero", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("announced without a handle") >= 0 || "object zero can still be requested";
+  });
+  T("an announcement with no handle explains itself", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("an announcement with no handle in it") >= 0
+      || "the user is not told what an empty announcement means";
+  });
+  T("an empty object list is not overstated", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return (src.indexOf("normal for an EOS in remote mode") >= 0
+            && src.indexOf("does not by itself mean") >= 0)
+      || "an empty enumeration is still reported as a conclusion";
+  });
+  T("the handle list attempt always reports, success or not", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return (src.indexOf("listNote") >= 0 && src.indexOf("refused to list its objects") >= 0
+            && src.indexOf("enumerates no objects through the standard list") >= 0)
+      || "the fallback can still run and say nothing";
+  });
+  T("a failed download shows the record the handle came from", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("The object record this handle was read from") >= 0
+      || "the report leaves out the one piece of evidence needed";
+  });
+  T("the report says whether the handle is in the body's list", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return (src.indexOf("among them") >= 0 && src.indexOf("NOT among them") >= 0)
+      || "the decisive question is not answered in the failure";
+  });
+  T("each transfer route asks for the handle it is given", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return (/run:\s*async\s*\(h/.test(src) && src.indexOf("r.run(h, 0)") >= 0)
+      || "a route still closes over one handle, so a fallback cannot vary it";
+  });
+  T("the fallback tries handles other than the one that failed", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("filter(h => h !== target.handle)") >= 0
+      || "the fallback could ask for the same refused file again";
+  });
+  T("a download reports which handle actually worked", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("from the body's own list") >= 0 || "a rescued download does not say how";
+  });
+  T("the file is named and completed against the handle that worked", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return (src.indexOf("[usedHandle]") >= 0 && src.split("usedHandle").length > 3)
+      || "the name and the transfer completion still use the refused handle";
+  });
+  T("a failed handshake is retried once after a USB reset", ()=>{
+    const src = WireLink.open.toString();
+    return (src.indexOf("dev.reset") >= 0 && /attempt < 2/.test(src))
+      || "a stuck pipe is handed straight back to the user";
+  });
+  T("the handshake retry does not become a loop", ()=>{
+    const src = WireLink.open.toString();
+    return (src.indexOf("attempt === 0") >= 0)
+      || "a genuinely faulted body would be retried indefinitely";
+  });
+  T("a failed handshake still names the step", ()=>{
+    const src = WireLink.open.toString();
+    return src.indexOf("handshake stopped at: ") >= 0 || "a failure does not say where it stopped";
+  });
+  T("a movie is not saved as a photograph", ()=>{
+    const d = new Uint8Array(16);
+    d.set([0x00,0x00,0x00,0x18,0x66,0x74,0x79,0x70,0x71,0x74,0x20,0x20], 0);
+    return WireLink._internals.sniffExtension(d) === ".mov"
+      || ("sniffed as " + WireLink._internals.sniffExtension(d));
+  });
+  T("a JPEG is recognised by its signature", ()=>{
+    const d = new Uint8Array([0xff,0xd8,0xff,0xe0,0,0,0,0]);
+    return WireLink._internals.sniffExtension(d) === ".jpg";
+  });
+  T("an unrecognised file is not given a name that claims more than is known", ()=>{
+    const d = new Uint8Array([1,2,3,4,5,6,7,8,9,10,11,12]);
+    return WireLink._internals.sniffExtension(d) === ".bin";
+  });
+  T("the body's own filename is read from the object description", ()=>{
+    const b = new Uint8Array(53 + 12*2);
+    const dv = new DataView(b.buffer);
+    dv.setUint16(4, 0x3801, true); dv.setUint32(8, 1234, true);
+    b[52] = 12;
+    const nm = "IMG_0042.JPG";
+    for(let i=0;i<12;i++) dv.setUint16(53+i*2, nm.charCodeAt(i), true);
+    const got = WireLink._internals.parseObjectInfo(b);
+    return (got && got.name === nm && got.bytes === 1234) || ("read " + JSON.stringify(got));
+  });
+  T("a short object description is refused rather than misread", ()=>
+    WireLink._internals.parseObjectInfo(new Uint8Array(10)) === null
+      || "a truncated description would be parsed anyway");
+  T("a PTP handle array is read as count then values", ()=>{
+    const b = new Uint8Array(16);
+    const dv = new DataView(b.buffer);
+    dv.setUint32(0, 3, true); dv.setUint32(4, 0x11, true); dv.setUint32(8, 0x22, true); dv.setUint32(12, 0x33, true);
+    const got = WireLink._internals.parseHandleArray(b);
+    return (got.length === 3 && got[2] === 0x33) || ("read as " + JSON.stringify(got));
+  });
+  T("a truncated handle array does not invent entries", ()=>{
+    const b = new Uint8Array(8);
+    new DataView(b.buffer).setUint32(0, 99, true);
+    const got = WireLink._internals.parseHandleArray(b);
+    return got.length === 1 || ("read " + got.length + " handles from a truncated array");
+  });
+  T("the probe settles the handle question against the body's own list", ()=>{
+    const src = WireLink.probeObject.toString();
+    return (src.indexOf("GetObjectHandles") >= 0 && src.indexOf("wrong offset") >= 0)
+      || "the probe cannot tell a bad parse from a refused transfer";
+  });
+  T("a refused download falls back to handles the body lists", ()=>{
+    const src = WireLink.downloadObject.toString();
+    return src.indexOf("newest handles the body itself lists") >= 0
+      || "a bad handle parse would never be discovered by downloading";
+  });
+  T("the body is told to stay awake", ()=>{
+    const src = WireLink._internals.pumpEventsSource();
+    return src.indexOf("EOS_KeepDeviceOn") >= 0 || "nothing stops the camera falling asleep mid session";
+  });
+  T("staying awake never interrupts a release or a write", ()=>{
+    const src = WireLink._internals.pumpEventsSource();
+    return (src.indexOf("!liveHeld && !pumpHeld && Date.now() - awakeAt") >= 0)
+      || "the keep awake call can land in the middle of something";
+  });
+  T("no code is defined without being used", ()=>{
+    // Every constant left in these tables is one this build actually
+    // sends. A code sitting unused is an invitation to send it, which
+    // is how the focus point went wrong.
+    const src = document.documentElement.outerHTML;
+    for(const k in OP)   if(src.indexOf("OP." + k) < 0)   return k + " is defined but never sent";
+    for(const k in PROP) if(src.indexOf("PROP." + k) < 0) return k + " is defined but never used";
+    return true;
+  });
   T("the sequence that produced a frame is tried early", ()=>{
     const ids = WireLink.strategies().map(s=>s.id);
     return ids.indexOf("single-op") === 1
@@ -3959,9 +4303,10 @@ function runTests(){
     const src = WireLink.downloadObject.toString();
     return src.indexOf("returned no bytes") >= 0 || "an empty download would be reported as a file";
   });
-  T("a download names a JPEG when it sees one", ()=>{
+  T("a download identifies what it fetched", ()=>{
     const src = WireLink.downloadObject.toString();
-    return (src.indexOf("0xd8") >= 0 && src.indexOf(".jpg") >= 0) || "downloads are never identified";
+    return (src.indexOf("sniffExtension") >= 0 && src.indexOf("parseObjectInfo") >= 0)
+      || "downloads are never identified";
   });
   T("focus reports what the body answered", ()=>{
     const src = WireLink.focusNow.toString();
