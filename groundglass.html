@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GroundGlass :: groundglass-v0.2.0.html :: v0.2.0 -->
+<!-- GroundGlass :: groundglass-v0.3.0.html :: v0.3.0 -->
 <html lang="en" data-theme="darkcloth">
 <head>
 <meta charset="utf-8">
@@ -222,7 +222,7 @@ ul.tight li{margin:2px 0}
 <header class="bar">
   <div class="brand">
     <span class="nm">GROUND GLASS</span>
-    <span class="fi">FI-122 &middot; <span id="verLabel">v0.2.0</span></span>
+    <span class="fi">FI-122 &middot; <span id="verLabel">v0.3.0</span></span>
   </div>
 
   <div class="links" role="group" aria-label="Camera link">
@@ -364,6 +364,11 @@ ul.tight li{margin:2px 0}
             <button class="btn" id="btnWireTest">BENCH TEST</button>
             <button class="btn" id="btnWireInfo">DEVICE INFO</button>
           </div>
+          <div class="grid2" style="margin-top:6px">
+            <button class="btn" id="btnRelProbe">RELEASE PROBE</button>
+            <button class="btn" id="btnCapDest">SHOOT TO CARD</button>
+          </div>
+          <p class="small">RELEASE PROBE tries each way of asking an EOS body for an exposure and watches the event stream for a new file, so it reports which one your body honours rather than which one returned success. It will make real exposures.</p>
           <div class="row"><label for="chkHex">Hex trace</label><input type="checkbox" id="chkHex"></div>
           <p class="small">BENCH TEST walks the whole path against the body and reports a row per step, so a failure has an address rather than a shrug. It does not fire the shutter.</p>
           <p class="small">Live view over PTP is a polled JPEG, so it will look like a slideshow next to the GLASS link. Use WIRE for the knobs and GLASS for the picture.</p>
@@ -407,7 +412,7 @@ ul.tight li{margin:2px 0}
   <div class="db">
     <dl class="kv">
       <dt>Instrument</dt><dd>GROUND GLASS, Field Instrument FI-122</dd>
-      <dt>Version</dt><dd id="aboutVer">v0.2.0</dd>
+      <dt>Version</dt><dd id="aboutVer">v0.3.0</dd>
       <dt>License</dt><dd>GPL-3.0</dd>
       <dt>Runs</dt><dd>From disk. No server, no build step, no dependencies.</dd>
     </dl>
@@ -441,7 +446,7 @@ ul.tight li{margin:2px 0}
 <script>
 "use strict";
 /* =================================================================
-   GROUND GLASS (FI-122)  v0.2.0
+   GROUND GLASS (FI-122)  v0.3.0
    A single file console that puts a Canon EOS R6 on the bench:
    a monitor with real scopes, and the camera's own knobs.
 
@@ -454,7 +459,7 @@ ul.tight li{margin:2px 0}
    No server. No build step. No libraries. Runs from file://.
    ================================================================= */
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const $ = (id) => document.getElementById(id);
 const clamp = (v,a,b) => v<a?a:(v>b?b:v);
 
@@ -517,7 +522,7 @@ const EC = {0xe8:"-3",0xeb:"-2 2/3",0xec:"-2 1/2",0xed:"-2 1/3",0xf0:"-2",0xf3:"
 /* Canon EOS device property codes */
 const PROP = { AV:0xd101, TV:0xd102, ISO:0xd103, EC:0xd104, MODE:0xd105, DRIVE:0xd107,
   AFMODE:0xd108, WB:0xd10c, KELVIN:0xd10e, BATTERY:0xd111, EVF_OUT:0xd1b0, EVF_MODE:0xd1b3,
-  AVAILSHOTS:0xd11b };
+  AVAILSHOTS:0xd11b, CAPTURE_DEST:0xd11c };
 const PROPNAME = {}; for(const k in PROP) PROPNAME[PROP[k]] = k;
 
 /* ---- exposure maths -------------------------------------------
@@ -729,7 +734,8 @@ const OP = { OpenSession:0x1002, CloseSession:0x1003, GetDeviceInfo:0x1001,
   EOS_SetRemoteMode:0x9114, EOS_SetEventMode:0x9115, EOS_GetEvent:0x9116,
   EOS_SetDevicePropValueEx:0x9110, EOS_GetViewFinderData:0x9153,
   EOS_RemoteReleaseOn:0x9128, EOS_RemoteReleaseOff:0x9129,
-  EOS_RemoteRelease:0x910f, EOS_SetUILock:0x911b, EOS_ResetUILock:0x911c };
+  EOS_RemoteRelease:0x910f, EOS_SetUILock:0x911b, EOS_ResetUILock:0x911c,
+  EOS_SetCapacity:0x911a, EOS_KeepDeviceOn:0x911f };
 
 /* PTP response codes, by name, because "0x2019" tells you nothing at
    the bench and "device busy" tells you to wait and try again. */
@@ -803,6 +809,14 @@ function hexdump(u8, limit){
 const WireLink = (function(){
   let dev=null, iface=0, epIn=0, epOut=0, tid=0, poll=0, evPoll=0, busy=false;
   let pollMs = 120, rxBuf = new Uint8Array(0), info = null, releaseOp = null, hex = false;
+  let objEvents = 0, strategy = null, capacityPrimed = false;
+  const seenEventTypes = {};
+
+  /* An exposure announces itself in the event stream as a new object.
+     Which record type carries that announcement varies between bodies,
+     so several are counted, and anything unrecognised is logged once so
+     it can be identified at the bench rather than guessed at here. */
+  const OBJECT_EVENTS = [0xc181, 0xc18b, 0xc190, 0xc1a7, 0xc1a9];
 
   function pack(type, code, params, payload, useTid){
     const np = params ? params.length : 0;
@@ -911,7 +925,13 @@ const WireLink = (function(){
           }
           if(opts.length){ CAM[t.key].options = opts; seen++; }
         }
+      } else if(OBJECT_EVENTS.indexOf(type) >= 0){
+        objEvents++; seen++;
+        dbg("object event 0x" + type.toString(16) + ": the body made a file");
       } else if(type === 0) { break; }
+      else {
+        if(!seenEventTypes[type]){ seenEventTypes[type] = 1; dbg("unrecognised event record type 0x" + type.toString(16)); }
+      }
       o += size;
     }
     return seen;
@@ -921,6 +941,9 @@ const WireLink = (function(){
     if(pc === PROP.AVAILSHOTS){ CAM.shots = val; return; }
     const t = tableFor(pc);
     if(!t){ dbg("prop 0x"+pc.toString(16)+" = "+val); return; }
+    if(!t.tab[val] && CAM[t.key].value === null){
+      log("The body reports " + t.key + " as 0x" + val.toString(16) + ", which is not in the table.");
+    }
     const lbl = t.tab[val];
     if(lbl !== undefined) CAM[t.key].value = lbl;
     else dbg("unmapped " + (PROPNAME[pc]||pc) + " value 0x" + val.toString(16));
@@ -1060,22 +1083,123 @@ const WireLink = (function(){
       dbg("set " + key + " to " + label + " (0x" + code.toString(16) + ")");
       return true;
     },
-    async release(afOnly){
-      const af = $("chkAf") && $("chkAf").checked ? 1 : 0;
-      if(releaseOp === "single"){
-        await transact(OP.EOS_RemoteRelease);
-        if(!afOnly) shutterClick();
-        return true;
+    /* Telling the body the host has room. Canon refuses to shoot when the
+       capture destination includes the host and no capacity was declared,
+       and it refuses quietly, which is the worst way to refuse. */
+    async primeCapacity(){
+      try{ await transact(OP.EOS_SetCapacity, [0x0fffffff], null, {tolerate:[0x2005,0x2006]});
+           capacityPrimed = true; return true; }
+      catch(e){ dbg("set capacity: " + e.message); return false; }
+    },
+    async setCaptureDest(v){
+      await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.CAPTURE_DEST, v));
+      if(v !== 1) await this.primeCapacity();
+      return true;
+    },
+
+    /* Five ways to ask an EOS body for an exposure. Bodies differ in
+       which they honour, and a request that is accepted is not the same
+       as a file that exists, so each attempt is confirmed by watching
+       the event stream for a new object rather than by trusting 0x2001. */
+    strategies(){
+      return [
+        { id:"two-stage-af", name:"Two stage press, half then full, autofocus on",
+          run: async () => { await transact(OP.EOS_RemoteReleaseOn,[1,0]);   // half press
+                             await new Promise(r=>setTimeout(r,300));        // let it focus
+                             await transact(OP.EOS_RemoteReleaseOn,[2,0]);   // full press
+                             await new Promise(r=>setTimeout(r,80));
+                             await transact(OP.EOS_RemoteReleaseOff,[2]);
+                             await transact(OP.EOS_RemoteReleaseOff,[1]); } },
+        { id:"two-stage",    name:"Two stage press, full only, no autofocus",
+          run: async () => { await transact(OP.EOS_RemoteReleaseOn,[2,0]);
+                             await new Promise(r=>setTimeout(r,80));
+                             await transact(OP.EOS_RemoteReleaseOff,[2]); } },
+        { id:"af-off",   name:"Release on and off, autofocus off",
+          run: async () => { await transact(OP.EOS_RemoteReleaseOn,[0,0]);
+                             await new Promise(r=>setTimeout(r,80));
+                             await transact(OP.EOS_RemoteReleaseOff,[0]); } },
+        { id:"af-on",    name:"Release on and off, autofocus on",
+          run: async () => { await transact(OP.EOS_RemoteReleaseOn,[1,0]);
+                             await new Promise(r=>setTimeout(r,300));
+                             await transact(OP.EOS_RemoteReleaseOff,[1]); } },
+        { id:"one-param",name:"Release on and off, single parameter",
+          run: async () => { await transact(OP.EOS_RemoteReleaseOn,[0]);
+                             await new Promise(r=>setTimeout(r,80));
+                             await transact(OP.EOS_RemoteReleaseOff,[0]); } },
+        { id:"ui-lock",  name:"Release inside a UI lock",
+          run: async () => { await transact(OP.EOS_SetUILock, null, null, {tolerate:[0x2005]});
+                             try{ await transact(OP.EOS_RemoteReleaseOn,[0,0]);
+                                  await new Promise(r=>setTimeout(r,80));
+                                  await transact(OP.EOS_RemoteReleaseOff,[0]); }
+                             finally{ await transact(OP.EOS_ResetUILock, null, null, {tolerate:[0x2005]}); } } },
+        { id:"single-op",name:"Single shot opcode 0x910f",
+          run: async () => { await transact(OP.EOS_RemoteRelease); } }
+      ];
+    },
+    async waitForObject(ms){
+      const start = objEvents, until = Date.now() + (ms||2500);
+      while(Date.now() < until){
+        try{ parseEvents(await transact(OP.EOS_GetEvent, null, null, {retries:0})); }catch(e){}
+        if(objEvents > start) return true;
+        await new Promise(r=>setTimeout(r,150));
       }
+      return false;
+    },
+    async probeRelease(){
+      const rows = [];
+      if(!dev){ return [{name:"Connected", pass:false, note:"Press CONNECT first."}]; }
+
+      let dest = null;
+      try{ parseEvents(await transact(OP.EOS_GetEvent)); }catch(e){}
+      rows.push({name:"Capacity declared to the body", pass: await this.primeCapacity(),
+        note:"Canon refuses to shoot to the host with no declared room, and refuses quietly."});
+
+      const modeLabel = CAM.drive.value || "unknown";
+      rows.push({name:"Drive mode", pass: !/timer/i.test(modeLabel), note: modeLabel +
+        (/timer/i.test(modeLabel) ? "  a self timer delays the file past the window this probe watches" : "")});
+
+      for(const st of this.strategies()){
+        const before = objEvents;
+        let sent = true, note = "";
+        try{ await st.run(); }
+        catch(e){ sent = false; note = e.message; }
+        let made = false;
+        if(sent){ made = await this.waitForObject(2500); note = made ? "a file appeared" : "accepted, but no file appeared"; }
+        rows.push({name:st.name, pass:made, note:note});
+        if(made){ strategy = st.id; ok("Release strategy that works on this body: " + st.name); break; }
+        await new Promise(r=>setTimeout(r,300));
+      }
+      if(!strategy){
+        rows.push({name:"No strategy produced a file", pass:false,
+          note:"Check that a card is in the camera, that the mode dial is on a stills mode and not movie, that the lens switch is not on manual with autofocus requested, and that the camera is not showing a menu."});
+      }
+      return rows;
+    },
+    releaseStrategy(){ return strategy; },
+    async release(afOnly){
+      if(!capacityPrimed) await this.primeCapacity();
+      const af = $("chkAf") && $("chkAf").checked ? 1 : 0;
       if(afOnly){
         await transact(OP.EOS_RemoteReleaseOn,[1,0]);
         await transact(OP.EOS_RemoteReleaseOff,[1]);
         return true;
       }
-      await transact(OP.EOS_RemoteReleaseOn, [af?1:0, 0]);
-      await new Promise(r=>setTimeout(r,60));
-      await transact(OP.EOS_RemoteReleaseOff, [af?1:0]);
+      const list = this.strategies();
+      const chosen = strategy ? list.filter(s=>s.id===strategy)
+                              : list.filter(s => s.id === (af ? "af-on" : "af-off"));
+      const before = objEvents;
+      await (chosen[0] || list[0]).run();
+      // The click waits for evidence. A transaction that returns 0x2001
+      // means the request was accepted, not that a frame exists, and an
+      // instrument that chirps on acceptance is lying to you.
+      const made = await this.waitForObject(2500);
+      if(!made){
+        err("The body accepted the release but no file appeared. Run RELEASE PROBE to find the strategy this body honours.");
+        say("No exposure. The request was accepted, no file arrived.");
+        return false;
+      }
       shutterClick();
+      ok("Exposure made.");
       return true;
     },
 
@@ -1152,7 +1276,8 @@ const WireLink = (function(){
         note:"Deliberately not fired. Use RELEASE by hand once the rows above are green."});
       return rows;
     },
-    _internals:{ pack, extractJpeg, parseEvents, setPropPayload, takeContainer, parseDeviceInfo, respName, codeFor, hexdump }
+    _internals:{ pack, extractJpeg, parseEvents, setPropPayload, takeContainer, parseDeviceInfo, respName, codeFor, hexdump,
+      objectCount:()=>objEvents, OBJECT_EVENTS }
   };
 })();
 
@@ -1529,9 +1654,14 @@ function drawDial(){
   legs.forEach((leg, idx) => {
     const {r, sweep, start} = ringGeom(idx);
     const lit = bind && bind.key === leg.key && bind.edge < 0.14;
-    svg.appendChild(el("path",{d:arcPath(cx,cy,r,start,start+sweep), fill:"none",
-      stroke: lit ? "var(--accent)" : "var(--edge)", "stroke-width": lit ? 3 : 2, "stroke-linecap":"round"}));
     const opts = CAM[leg.key].options || [];
+    // A ring with nothing behind it is drawn hollow, so "the body is not
+    // telling me this" never looks like "this is simply at rest".
+    const empty = !opts.length;
+    const arc = el("path",{d:arcPath(cx,cy,r,start,start+sweep), fill:"none",
+      stroke: lit ? "var(--accent)" : "var(--edge)", "stroke-width": lit ? 3 : 2, "stroke-linecap":"round"});
+    if(empty){ arc.setAttribute("stroke-dasharray","2 6"); arc.setAttribute("opacity","0.5"); }
+    svg.appendChild(arc);
     const n = Math.min(opts.length, 40);
     for(let i=0;i<n;i++){
       const a = start + sweep*(n<2?0:i/(n-1));
@@ -1546,7 +1676,9 @@ function drawDial(){
       svg.appendChild(el("line",{x1:bx,y1:by,x2:nx,y2:ny,stroke:"var(--brass)","stroke-width":3,"stroke-linecap":"round"}));
       svg.appendChild(el("circle",{cx:bx,cy:by,r:2.6,fill:"var(--brass)"}));
     }
-    const [lx,ly]=polar(cx,cy,r,start-13);
+    // Labels ride the gap at the top of each ring rather than stacking
+    // along one radius, which is what made them read as a diagonal pile.
+    const [lx,ly]=polar(cx,cy,r,start+sweep+16);
     svg.appendChild(el("text",{x:lx,y:ly+4,fill:lit?"var(--accent)":"var(--dim)","font-size":11,
       "font-family":"var(--mono)","text-anchor":"middle"}, leg.label));
   });
@@ -1562,7 +1694,13 @@ function drawDial(){
     note.textContent = "";
     const em = document.createElement("em"); em.textContent = BIND_TEXT[bind.key][which];
     note.appendChild(em);
-  } else { note.textContent = "All three legs have room to move."; }
+  } else {
+    const silent = ["av","tv","iso"].filter(k => !(CAM[k].options||[]).length);
+    if(silent.length === 3) note.textContent = "No exposure data from this link.";
+    else if(silent.length) note.textContent = "The body is not reporting " +
+      silent.map(k=>({av:"aperture",tv:"shutter",iso:"ISO"})[k]).join(" or ") + ".";
+    else note.textContent = "All three legs have room to move.";
+  }
 }
 
 /* =================================================================
@@ -1735,6 +1873,16 @@ $("btnWireTest").addEventListener("click", async ()=>{
   try{ showRows("WIRE bench test", await WireLink.benchTest()); }
   catch(e){ err("Bench test could not run: " + e.message); }
   say("");
+});
+$("btnRelProbe").addEventListener("click", async ()=>{
+  say("Running the release probe. This makes real exposures.");
+  try{ showRows("Release probe", await WireLink.probeRelease()); }
+  catch(e){ err("Release probe could not run: " + e.message); }
+  say("");
+});
+$("btnCapDest").addEventListener("click", async ()=>{
+  try{ await WireLink.setCaptureDest(1); ok("Capture destination set to the card in the camera."); }
+  catch(e){ err("Could not set capture destination: " + e.message); }
 });
 $("btnWireInfo").addEventListener("click", ()=>{
   const i = WireLink.info();
@@ -2019,6 +2167,34 @@ function runTests(){
   T("hexdump truncates and says so", ()=>{
     const d = W.hexdump(new Uint8Array(200), 4);
     return /\+196 bytes/.test(d) || d;
+  });
+  T("the two stage press is tried first", ()=>{
+    const st = WireLink.strategies();
+    return st[0].id === "two-stage-af" && st[1].id === "two-stage";
+  });
+  T("every release strategy is well formed", ()=>{
+    for(const st of WireLink.strategies()){
+      if(!st.id || !st.name || typeof st.run !== "function") return "malformed: " + JSON.stringify(st.id);
+    }
+    return WireLink.strategies().length >= 7 || WireLink.strategies().length;
+  });
+  T("a ring with no options is drawn hollow", ()=>{
+    const save = JSON.stringify(CAM.av);
+    CAM.av = {value:null, options:[]};
+    drawDial();
+    const dashed = Array.from(document.querySelectorAll("#dial path")).filter(p=>p.getAttribute("stroke-dasharray"));
+    CAM.av = JSON.parse(save); drawDial();
+    return dashed.length >= 1 || "no hollow ring drawn";
+  });
+  T("a silent leg is named rather than called at rest", ()=>{
+    const save = JSON.stringify({a:CAM.av,t:CAM.tv,i:CAM.iso});
+    CAM.av = {value:null, options:[]};
+    CAM.tv = {value:"1/25", options:["1/15","1/25","1/50"]};
+    CAM.iso= {value:"2000", options:["1000","2000","4000"]};
+    drawDial();
+    const txt = $("bindNote").textContent;
+    const r = JSON.parse(save); CAM.av=r.a; CAM.tv=r.t; CAM.iso=r.i; drawDial();
+    return /aperture/.test(txt) || txt;
   });
   T("the compositor has a drawing surface", ()=> !!sctx && screen.width > 0);
   T("all four links answer the same interface", ()=>{
