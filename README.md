@@ -1,11 +1,11 @@
 # GROUND GLASS
 
-Field Instrument FI-122. Version 0.20.5.
+Field Instrument FI-122. Version 0.21.3.
 
 A single file console that puts a Canon EOS R6 on the bench: a monitor with real
 scopes, and the camera's own knobs.
 
-Open `groundglass-v0.20.5.html` by double clicking it. No server, no build step,
+Open `groundglass-v0.21.3.html` by double clicking it. No server, no build step,
 no dependencies, no network access. It works from `file://` and it works with
 the network cable pulled.
 
@@ -126,7 +126,7 @@ middle.
 
 ## Self test
 
-162 assertions, in the app, on demand. Exposure arithmetic against known answers,
+179 assertions, in the app, on demand. Exposure arithmetic against known answers,
 the Canon value tables, the PTP container codec, live view chunk extraction,
 event stream parsing against malformed input, the container splitter against
 split and malformed transfers, the DeviceInfo parser, the response code table,
@@ -245,6 +245,16 @@ asterisk and a dashed needle wherever it shows, because it is your reading of
 the lens rather than the camera's. If the body later reports a real aperture,
 that always wins.
 
+## The sequence your body honours
+
+Bodies disagree about how to be asked for a photograph. RELEASE PROBE works
+through the candidates and keeps whichever produces an actual file, and CAPTURE
+uses that one from then on. Save the session afterwards and it comes back next
+time, because finding it costs a sweep and several exposures.
+
+On the R6 this build was developed against, the answer turned out to be the
+older single shot opcode, not the two stage press.
+
 ## The half press arms the shutter
 
 A full press with no half press before it is not a faster way to take a
@@ -295,6 +305,42 @@ Version 0.18 of this instrument could cause it. It wrote a focus point using a
 guessed payload layout, and a body handed a payload it cannot parse can fault.
 That feature is gone, and this build refuses to write any property whose layout
 it has not confirmed.
+
+## WIRE and AETHER are usually not available at once
+
+Most Canon bodies switch off their network while a computer is attached over
+USB, and the WIRE link counts as a computer. If AETHER cannot see the camera,
+unplug the cable first and probe again. This is the most common cause by a wide
+margin and it is not a fault in either link.
+
+## If PROBE seems to do nothing
+
+It will now always say something within about eight seconds. If it reports no
+answer and the address is right, the usual cause is the browser refusing to let
+a page opened from disk reach a device on your local network. Chrome calls this
+private network access.
+
+The picture may still arrive even when replies cannot be read, because images
+are treated differently from data requests. That is what blind control is for:
+the shutter can be fired and nothing can be confirmed, and the console says so.
+The WIRE link over USB is not affected by any of this.
+
+## The AETHER link
+
+Enter the address the camera shows when CCAPI is enabled, then PROBE. The probe
+distinguishes three states: replies readable (full control), reachable but
+unreadable (the picture arrives, commands can be sent blind, nothing can be
+confirmed), and no answer at all.
+
+With replies readable, this link is in some ways better than the cable. The
+camera publishes its own endpoint list, so nothing is guessed at. Settings
+arrive with the body's own allowed values rather than a published table. And a
+photograph is a URL, so collecting it is an ordinary fetch rather than a
+protocol negotiation.
+
+Blind control exists for the case where the browser will not let replies be
+read. In that state the shutter can be fired and nothing can be confirmed, and
+the console says so rather than reporting a frame it cannot see.
 
 ## The capture panel
 
@@ -349,6 +395,47 @@ camera.
   tables are logged rather than guessed at.
 
 ## Changelog
+
+- **0.21.3** A full sweep of ten sequences on an R6 produced exactly one frame,
+  and it came from the older single shot opcode rather than from anything built
+  on the two stage press. Every RemoteReleaseOn variant was either accepted with
+  nothing to show for it or answered device busy. The single opcode is promoted
+  to second in the order, behind the half then full press that a modern body
+  should want. It is not the fashionable way to do this and it is the way that
+  worked, and the second matters more. The discovered sequence now travels in
+  the saved session, since finding it costs a sweep and several frames.
+  179 assertions.
+
+- **0.21.2** The probe asks two questions instead of one. An image load is not
+  subject to the rules that stop a data request being read, so a readable
+  request and a picture request together separate a browser policy problem from
+  a camera that is not there. The previous version blamed the browser in both
+  cases, which sends you to the wrong problem. When nothing answers on either
+  route the first suggestion is now the USB cable, because most Canon bodies
+  switch the network off while a computer is attached, which means WIRE and
+  AETHER rarely work at the same time. The probe also reports as a row list,
+  tries https if http is silent, and accepts an address typed the way the camera
+  screen shows it. 175 assertions.
+
+- **0.21.1** PROBE and CONNECT could appear to do nothing. A browser asked to
+  reach a device on the local network from a page opened off disk does not
+  always refuse: it can sit on the request without ever answering, and a promise
+  that never settles is a button that looks unwired. Every network request now
+  has a six second deadline, both buttons say what they are doing the moment
+  they are pressed, and a silent network is explained rather than only reported.
+  173 assertions.
+
+- **0.21.0** The AETHER link is built out. CCAPI describes itself, so this link
+  reads the camera's own list of endpoints and calls only what the body has said
+  exists; anything absent is reported as unsupported rather than attempted in
+  hope, which is the opposite of how the focus point went. API MAP shows the
+  list. Settings come with the camera's own allowed values rather than a
+  published table, writes are read back, and a release waits for a new file on
+  the event stream instead of trusting the acknowledgement. Downloading is a
+  fetch, because over the network a frame is a URL. The intervalometer is now
+  one implementation shared by both links, and the capture panel follows
+  whichever link is carrying, so the same buttons mean the same things over the
+  cable and over the air. 170 assertions.
 
 - **0.20.5** Settings writes were competing with the viewfinder poll and the
   event poll for one bulk pipe, and a body with its hands full answers device
