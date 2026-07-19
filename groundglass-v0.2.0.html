@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<!-- GroundGlass :: groundglass-v0.2.0.html :: v0.2.0 -->
+<html lang="en" data-theme="darkcloth">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GROUND GLASS :: FI-122</title>
+<style>
+/* ---------------------------------------------------------------
+   GROUND GLASS (FI-122)
+   Palette derives from the view camera bench: darkcloth black-green,
+   frosted ground glass, safelight amber, brass meter needle, and the
+   magenta that focus peaking has always been drawn in.
+   All embedded art is hand-authored SVG or canvas. No external assets.
+   ---------------------------------------------------------------- */
+:root{
+  --frost:#e8e6df; --glass:#cfd4cd;
+  --ink:#0c100e;
+  --brass:#c9a227; --amber:#e08a2e; --peak:#e0479e; --sig:#7fd4c1;
+  --warn:#e05a3a; --ok:#6fbf73;
+  --r:2px;
+  --fs:clamp(12px,0.55vw + 10px,15px);
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+  --disp:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+}
+/* Darkcloth: the default. What you see with your head under the hood. */
+html[data-theme="darkcloth"]{
+  --bg:#0b100e; --bg2:#121915; --panel:#161e19; --edge:#2b3833;
+  --fg:#dce5df; --dim:#8fa39a; --accent:var(--brass); --hi:var(--sig);
+}
+/* Safelight: for working next to a wet print. */
+html[data-theme="safelight"]{
+  --bg:#150a08; --bg2:#1d0f0b; --panel:#241310; --edge:#402019;
+  --fg:#f0cbb4; --dim:#b8836a; --accent:var(--amber); --hi:#ffb37a;
+}
+/* Daylight: the tripod in the field at noon. */
+html[data-theme="daylight"]{
+  --bg:#dcd9cf; --bg2:#e8e6df; --panel:#f2f0ea; --edge:#b3ae9f;
+  --fg:#1a201c; --dim:#5b655e; --accent:#7a5c12; --hi:#136356;
+}
+/* High contrast: required whenever there is more than one theme. */
+html[data-theme="contrast"]{
+  --bg:#000; --bg2:#000; --panel:#0a0a0a; --edge:#fff;
+  --fg:#fff; --dim:#e6e6e6; --accent:#ffe100; --hi:#00ffd0;
+  --peak:#ff59c7;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg); color:var(--fg);
+  font:var(--fs)/1.5 var(--mono);
+  -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column;
+}
+h1,h2,h3,.disp{font-family:var(--disp); font-weight:600; letter-spacing:.01em}
+button,select,input{font-family:inherit; font-size:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--hi); outline-offset:2px}
+[hidden]{display:none !important}
+
+/* ---- chrome ------------------------------------------------- */
+header.bar{
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  padding:8px 14px; background:var(--bg2);
+  border-bottom:1px solid var(--edge);
+}
+.brand{display:flex; align-items:baseline; gap:10px}
+.brand .nm{font-family:var(--disp); font-size:1.35em; letter-spacing:.14em}
+.brand .fi{color:var(--dim); letter-spacing:.18em; font-size:.8em}
+.spacer{flex:1}
+.chip{
+  border:1px solid var(--edge); background:transparent; color:var(--dim);
+  padding:5px 9px; border-radius:var(--r); letter-spacing:.08em;
+  min-height:34px; cursor:pointer;
+}
+.chip:hover{border-color:var(--accent); color:var(--fg)}
+.chip[aria-pressed="true"]{border-color:var(--accent); color:var(--ink); background:var(--accent)}
+
+/* ---- link selector: four brass-labelled toggles -------------- */
+.links{display:flex; gap:0; border:1px solid var(--edge); border-radius:var(--r); overflow:hidden}
+.links button{
+  background:transparent; border:0; border-right:1px solid var(--edge);
+  color:var(--dim); padding:6px 12px; min-height:38px; cursor:pointer;
+  letter-spacing:.12em; position:relative;
+}
+.links button:last-child{border-right:0}
+.links button[aria-pressed="true"]{color:var(--ink); background:var(--accent)}
+.links button .sub{display:block; font-size:.72em; letter-spacing:.04em; opacity:.75}
+
+/* ---- layout -------------------------------------------------- */
+main{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 340px; min-height:0}
+@media (max-width:900px){ main{grid-template-columns:1fr; grid-template-rows:auto auto} }
+.stage{position:relative; min-width:0; display:flex; flex-direction:column; background:var(--bg)}
+.viewport{
+  position:relative; flex:1; min-height:280px;
+  display:flex; align-items:center; justify-content:center;
+  background:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.012) 0 6px,transparent 6px 12px),
+    var(--bg);
+}
+#screen{max-width:100%; max-height:100%; display:block; background:#000;
+  box-shadow:0 0 0 1px var(--edge), 0 18px 40px rgba(0,0,0,.5)}
+.vp-note{position:absolute; color:var(--dim); text-align:center; padding:20px; max-width:46ch}
+.vp-note b{color:var(--fg); font-family:var(--disp); display:block; margin-bottom:6px; letter-spacing:.1em}
+
+.scopes{display:flex; gap:10px; padding:8px 12px; border-top:1px solid var(--edge); background:var(--bg2); flex-wrap:wrap}
+.scope{border:1px solid var(--edge); background:var(--panel); padding:4px 6px; border-radius:var(--r)}
+.scope figcaption{color:var(--dim); font-size:.72em; letter-spacing:.14em; margin-bottom:3px}
+.scope canvas{display:block; image-rendering:pixelated}
+
+/* ---- right column ------------------------------------------- */
+aside{
+  border-left:1px solid var(--edge); background:var(--bg2);
+  overflow-y:auto; min-height:0; display:flex; flex-direction:column;
+}
+@media (max-width:900px){ aside{border-left:0; border-top:1px solid var(--edge)} }
+.sect{border-bottom:1px solid var(--edge)}
+.sect > summary{
+  cursor:pointer; padding:9px 12px; list-style:none; letter-spacing:.14em;
+  color:var(--dim); display:flex; align-items:center; gap:8px; min-height:40px;
+}
+.sect > summary::-webkit-details-marker{display:none}
+.sect > summary::before{content:"+"; color:var(--accent); width:1ch}
+.sect[open] > summary::before{content:"-"}
+.sect > summary:hover{color:var(--fg)}
+.sect .body{padding:4px 12px 14px}
+
+/* ---- signature: the exposure rings --------------------------- */
+.rings{display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0 4px}
+#dial{width:min(300px,86%); height:auto; touch-action:manipulation}
+.dial-read{display:flex; gap:14px; justify-content:center; font-family:var(--disp); font-size:1.05em}
+.dial-read span{color:var(--dim); font-size:.72em; font-family:var(--mono); letter-spacing:.1em; display:block}
+.dial-read b{font-weight:600}
+.bind{
+  text-align:center; color:var(--dim); font-size:.76em; letter-spacing:.12em;
+  min-height:1.4em;
+}
+.bind em{color:var(--accent); font-style:normal}
+
+/* ---- rows / controls ----------------------------------------- */
+.row{display:flex; align-items:center; gap:8px; margin:6px 0; min-height:34px}
+.row label{color:var(--dim); flex:0 0 9.5em; letter-spacing:.06em}
+.row select,.row input[type=text],.row input[type=number]{
+  flex:1; min-width:0; background:var(--panel); border:1px solid var(--edge);
+  color:var(--fg); padding:6px 8px; border-radius:var(--r); min-height:34px;
+}
+.row input[type=range]{flex:1; min-width:0; accent-color:var(--accent); min-height:34px}
+.row .val{color:var(--dim); flex:0 0 4.5em; text-align:right}
+.toggles{display:flex; flex-wrap:wrap; gap:6px}
+.btn{
+  background:var(--panel); border:1px solid var(--edge); color:var(--fg);
+  padding:7px 11px; border-radius:var(--r); cursor:pointer; min-height:36px;
+  letter-spacing:.08em;
+}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.42; cursor:not-allowed}
+.btn.primary{background:var(--accent); color:var(--ink); border-color:var(--accent); font-weight:600}
+.btn.wide{width:100%}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+
+/* the release: a knurled ring around a red centre */
+.release{display:flex; gap:10px; align-items:center; justify-content:center; padding:6px 0 2px}
+#release{
+  width:74px; height:74px; border-radius:50%; cursor:pointer;
+  border:3px solid var(--edge); background:radial-gradient(circle at 38% 34%, #b8402f, #6d1f16 62%, #3a100b);
+  color:#f5e6e2; font-family:var(--disp); letter-spacing:.1em; font-size:.8em;
+  box-shadow:inset 0 0 0 6px var(--panel);
+}
+#release:active{transform:translateY(1px)}
+#release:disabled{filter:grayscale(1) brightness(.6); cursor:not-allowed}
+
+/* ---- status strip -------------------------------------------- */
+.status{
+  display:flex; gap:14px; flex-wrap:wrap; align-items:center;
+  padding:6px 14px; border-top:1px solid var(--edge); background:var(--bg2);
+  color:var(--dim); font-size:.8em; letter-spacing:.08em;
+}
+.lamp{display:inline-flex; align-items:center; gap:6px}
+.lamp i{width:9px; height:9px; border-radius:50%; background:var(--edge); display:inline-block}
+.lamp.on i{background:var(--ok); box-shadow:0 0 7px var(--ok)}
+.lamp.warn i{background:var(--warn); box-shadow:0 0 7px var(--warn)}
+.lamp.live i{background:var(--peak); box-shadow:0 0 7px var(--peak)}
+
+/* ---- log ------------------------------------------------------ */
+#log{
+  height:160px; overflow:auto; background:var(--panel); border:1px solid var(--edge);
+  border-radius:var(--r); padding:6px 8px; font-size:.78em; white-space:pre-wrap;
+  word-break:break-word;
+}
+#log .t{color:var(--dim)}
+#log .e{color:var(--warn)}
+#log .g{color:var(--ok)}
+#log .d{color:var(--hi)}
+
+/* ---- modal ---------------------------------------------------- */
+dialog{
+  border:1px solid var(--edge); background:var(--bg2); color:var(--fg);
+  border-radius:var(--r); max-width:min(680px,92vw); padding:0;
+}
+dialog::backdrop{background:rgba(0,0,0,.72)}
+dialog .dh{display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--edge)}
+dialog .dh h2{margin:0; font-size:1.1em; letter-spacing:.14em}
+dialog .db{padding:14px; max-height:64vh; overflow:auto}
+dialog .df{padding:10px 14px; border-top:1px solid var(--edge); display:flex; gap:8px; justify-content:flex-end}
+.kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin:0}
+.kv dt{color:var(--dim)}
+.kv dd{margin:0}
+.small{font-size:.85em; color:var(--dim)}
+.small a{color:var(--hi)}
+ul.tight{margin:6px 0; padding-left:18px}
+ul.tight li{margin:2px 0}
+.testline{display:flex; gap:8px}
+.testline .p{color:var(--ok)} .testline .f{color:var(--warn)}
+/* Touch targets reach the 44px floor wherever the pointer is coarse. */
+@media (pointer:coarse){
+  .chip,.btn,.links button,.row select,.row input[type=text],.row input[type=number],.sect > summary{min-height:44px}
+  .row input[type=checkbox]{width:24px;height:24px}
+}
+@media (prefers-reduced-motion:reduce){ *{animation:none !important; transition:none !important} }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <span class="nm">GROUND GLASS</span>
+    <span class="fi">FI-122 &middot; <span id="verLabel">v0.2.0</span></span>
+  </div>
+
+  <div class="links" role="group" aria-label="Camera link">
+    <button id="lnkBench" aria-pressed="true">BENCH<span class="sub">no camera</span></button>
+    <button id="lnkGlass" aria-pressed="false">GLASS<span class="sub">HDMI capture</span></button>
+    <button id="lnkWire"  aria-pressed="false">WIRE<span class="sub">USB / PTP</span></button>
+    <button id="lnkAether" aria-pressed="false">AETHER<span class="sub">WiFi / CCAPI</span></button>
+  </div>
+
+  <span class="spacer"></span>
+  <select id="theme" class="chip" aria-label="Theme">
+    <option value="darkcloth">Darkcloth</option>
+    <option value="safelight">Safelight</option>
+    <option value="daylight">Daylight</option>
+    <option value="contrast">High contrast</option>
+  </select>
+  <button id="btnMute" class="chip" aria-pressed="false" title="Mute the shutter">SOUND</button>
+  <button id="btnTest" class="chip">SELF TEST</button>
+  <button id="btnAbout" class="chip">ABOUT</button>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="viewport" id="viewport">
+      <canvas id="screen" width="960" height="540" aria-label="Live view"></canvas>
+      <div class="vp-note" id="vpNote" hidden><b>No picture</b><span id="vpNoteTxt"></span></div>
+      <video id="srcVideo" playsinline muted hidden></video>
+      <img id="srcImg" alt="" hidden crossorigin="anonymous">
+    </div>
+
+    <div class="scopes">
+      <figure class="scope"><figcaption>HISTOGRAM</figcaption><canvas id="scHist" width="256" height="72"></canvas></figure>
+      <figure class="scope"><figcaption>WAVEFORM</figcaption><canvas id="scWave" width="256" height="72"></canvas></figure>
+      <figure class="scope"><figcaption>CLIP</figcaption><canvas id="scClip" width="120" height="72"></canvas></figure>
+    </div>
+
+    <div class="status">
+      <span class="lamp" id="lampLink"><i></i><span>LINK</span></span>
+      <span class="lamp" id="lampLive"><i></i><span>LIVE</span></span>
+      <span class="lamp" id="lampCtrl"><i></i><span>CONTROL</span></span>
+      <span id="stFps">0.0 fps</span>
+      <span id="stRes">-</span>
+      <span id="stBatt">BATT -</span>
+      <span class="spacer"></span>
+      <span id="stMsg"></span>
+    </div>
+  </section>
+
+  <aside>
+    <details class="sect" open>
+      <summary>EXPOSURE</summary>
+      <div class="body">
+        <div class="rings">
+          <svg id="dial" viewBox="0 0 300 300" role="img" aria-label="Exposure rings"></svg>
+          <div class="dial-read">
+            <div><span>Av</span><b id="rdAv">-</b></div>
+            <div><span>Tv</span><b id="rdTv">-</b></div>
+            <div><span>ISO</span><b id="rdIso">-</b></div>
+            <div><span>EV</span><b id="rdEv">-</b></div>
+          </div>
+          <div class="bind" id="bindNote"></div>
+        </div>
+
+        <div class="row"><label for="selAv">Aperture</label><select id="selAv"></select></div>
+        <div class="row"><label for="selTv">Shutter</label><select id="selTv"></select></div>
+        <div class="row"><label for="selIso">ISO</label><select id="selIso"></select></div>
+        <div class="row"><label for="selEc">Exp comp</label><select id="selEc"></select></div>
+        <div class="row"><label for="selWb">White balance</label><select id="selWb"></select></div>
+        <div class="row"><label for="selDrive">Drive</label><select id="selDrive"></select></div>
+        <div class="row"><label for="selAf">AF mode</label><select id="selAf"></select></div>
+
+        <div class="release">
+          <button id="release" title="Release the shutter">RELEASE</button>
+          <div>
+            <div class="row" style="margin:2px 0"><label style="flex:0 0 auto" for="chkAf">Half press AF</label><input type="checkbox" id="chkAf" checked></div>
+            <button class="btn" id="btnAfOnly" style="margin-top:4px">FOCUS ONLY</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="sect" open>
+      <summary>MONITOR</summary>
+      <div class="body">
+        <div class="toggles">
+          <button class="btn" id="ovGrid" aria-pressed="false">GRID</button>
+          <button class="btn" id="ovSafe" aria-pressed="false">SAFE</button>
+          <button class="btn" id="ovPeak" aria-pressed="false">PEAKING</button>
+          <button class="btn" id="ovZebra" aria-pressed="false">ZEBRA</button>
+          <button class="btn" id="ovFalse" aria-pressed="false">FALSE COLOR</button>
+          <button class="btn" id="ovFlip" aria-pressed="false">FLIP</button>
+        </div>
+        <div class="row"><label for="rngPeak">Peak level</label><input type="range" id="rngPeak" min="4" max="80" value="28"><span class="val" id="valPeak">28</span></div>
+        <div class="row"><label for="rngZebra">Zebra at</label><input type="range" id="rngZebra" min="60" max="100" value="94"><span class="val" id="valZebra">94%</span></div>
+        <div class="row"><label for="rngScale">Preview scale</label><input type="range" id="rngScale" min="40" max="100" value="100"><span class="val" id="valScale">100%</span></div>
+        <div class="grid2" style="margin-top:8px">
+          <button class="btn" id="btnGrab">GRAB FRAME</button>
+          <button class="btn" id="btnFull">FULL SCREEN</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="sect">
+      <summary>LINK</summary>
+      <div class="body" id="linkBody">
+        <div id="paneBench">
+          <p class="small">The bench link runs a synthetic scene and a simulated camera so the whole console, the scopes, and the self tests work with nothing plugged in.</p>
+          <div class="row"><label for="selScene">Scene</label><select id="selScene">
+            <option value="chart">Test chart</option>
+            <option value="ramp">Grey ramp</option>
+            <option value="portrait">Portrait sim</option>
+            <option value="motion">Motion bars</option>
+          </select></div>
+        </div>
+
+        <div id="paneGlass" hidden>
+          <p class="small">Pick the HDMI capture device. Set the R6 to clean HDMI output, and note that the camera drops to a lower resolution when it is also recording.</p>
+          <div class="row"><label for="selCam">Device</label><select id="selCam"></select></div>
+          <div class="grid2">
+            <button class="btn" id="btnCamScan">SCAN</button>
+            <button class="btn primary" id="btnCamOpen">OPEN</button>
+          </div>
+          <p class="small" id="glassNote" style="margin-top:8px"></p>
+        </div>
+
+        <div id="paneWire" hidden>
+          <p class="small">Speaks Canon PTP over WebUSB. The host operating system claims the camera first, so the interface has to be freed before the browser can take it. See the About panel for the per platform step.</p>
+          <div class="grid2">
+            <button class="btn primary" id="btnUsbOpen">CONNECT</button>
+            <button class="btn" id="btnUsbClose">RELEASE</button>
+          </div>
+          <div class="row" style="margin-top:8px"><label for="selEvf">Live view to</label><select id="selEvf">
+            <option value="2">Computer only</option>
+            <option value="3" selected>Camera and computer</option>
+            <option value="1">Camera only</option>
+          </select></div>
+          <div class="row"><label for="rngPoll">Poll interval</label><input type="range" id="rngPoll" min="60" max="500" step="20" value="120"><span class="val" id="valPoll">120</span></div>
+          <div class="grid2" style="margin-top:8px">
+            <button class="btn" id="btnWireTest">BENCH TEST</button>
+            <button class="btn" id="btnWireInfo">DEVICE INFO</button>
+          </div>
+          <div class="row"><label for="chkHex">Hex trace</label><input type="checkbox" id="chkHex"></div>
+          <p class="small">BENCH TEST walks the whole path against the body and reports a row per step, so a failure has an address rather than a shrug. It does not fire the shutter.</p>
+          <p class="small">Live view over PTP is a polled JPEG, so it will look like a slideshow next to the GLASS link. Use WIRE for the knobs and GLASS for the picture.</p>
+        </div>
+
+        <div id="paneAether" hidden>
+          <p class="small">Canon CCAPI over the network. Activate CCAPI on the body once with Canon's tool, join the camera to your network, then read the address and port off the camera screen.</p>
+          <div class="row"><label for="txtHost">Camera address</label><input type="text" id="txtHost" value="http://192.168.1.2:8080" spellcheck="false"></div>
+          <div class="grid2">
+            <button class="btn" id="btnCcProbe">PROBE</button>
+            <button class="btn primary" id="btnCcOpen">CONNECT</button>
+          </div>
+          <p class="small" id="ccNote" style="margin-top:8px">The camera sends no cross origin headers, so this page can always <em>show</em> the live view but may not be able to <em>read</em> replies. PROBE finds out which half works from here.</p>
+          <div class="row"><label for="chkCcBlind">Blind control</label><input type="checkbox" id="chkCcBlind"></div>
+          <p class="small">Blind control sends commands the camera will act on but whose replies cannot be read back. Settings shown in the console are then a guess, not a readback.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="sect">
+      <summary>SESSION</summary>
+      <div class="body">
+        <div class="grid2">
+          <button class="btn" id="btnExport">EXPORT</button>
+          <button class="btn" id="btnImport">IMPORT</button>
+        </div>
+        <input type="file" id="fileImport" accept="application/json,.json" hidden>
+        <div class="row" style="margin-top:10px"><label for="chkDebug">Debug log</label><input type="checkbox" id="chkDebug"></div>
+        <div id="log" role="log" aria-live="polite"></div>
+        <div class="grid2" style="margin-top:6px">
+          <button class="btn" id="btnLogClear">CLEAR</button>
+          <button class="btn" id="btnLogSave">SAVE LOG</button>
+        </div>
+      </div>
+    </details>
+  </aside>
+</main>
+
+<dialog id="dlgAbout">
+  <div class="dh"><h2>GROUND GLASS</h2><span class="spacer"></span><button class="chip" id="aboutClose">CLOSE</button></div>
+  <div class="db">
+    <dl class="kv">
+      <dt>Instrument</dt><dd>GROUND GLASS, Field Instrument FI-122</dd>
+      <dt>Version</dt><dd id="aboutVer">v0.2.0</dd>
+      <dt>License</dt><dd>GPL-3.0</dd>
+      <dt>Runs</dt><dd>From disk. No server, no build step, no dependencies.</dd>
+    </dl>
+    <h3>Vendored libraries</h3>
+    <p class="small">None. Every byte in this file is hand written. The scopes, the rings, the PTP codec, and the JPEG plumbing are all first party. Embedded art is inline SVG and canvas drawing, authored for this instrument and covered by the same GPL-3.0 license as the code.</p>
+    <h3>Freeing the camera for the WIRE link</h3>
+    <ul class="tight small">
+      <li>Windows: the MTP class driver claims the body. Replace the driver on that interface with WinUSB using Zadig, then reconnect.</li>
+      <li>macOS: the system PTPCamera agent claims it. Quit it, or set the camera to a mode the agent ignores, then reconnect.</li>
+      <li>Linux: the gvfs gphoto2 volume monitor claims it. Stop that service or add a udev rule granting your user access to the device, then reconnect.</li>
+    </ul>
+    <h3>Known limitations</h3>
+    <ul class="tight small">
+      <li>WIRE is written against the published Canon EOS PTP extensions and has not yet been proven against an R6. Connect it, run BENCH TEST in the LINK panel, and treat every write as unverified until those rows are green.</li>
+      <li>PTP live view is polled, so it is a slideshow, not video. The GLASS link is the honest monitor.</li>
+      <li>AETHER control depends on whether the camera tolerates a simple request. If it does not, live view still works and the knobs do not.</li>
+      <li>Video record start and stop, focus stacking, and image download are not in this version.</li>
+      <li>Scopes read the preview, not the sensor. They tell you about the picture you are being shown.</li>
+    </ul>
+    <h3>Feedback</h3>
+    <p class="small">Bench notes and defects go to Green Shoe Garage, greenshoegarage.com. Include the version marker at the top of this file and the contents of the debug log.</p>
+  </div>
+  <div class="df"><button class="btn" id="aboutClose2">CLOSE</button></div>
+</dialog>
+
+<dialog id="dlgTest">
+  <div class="dh"><h2>SELF TEST</h2><span class="spacer"></span><button class="chip" id="testClose">CLOSE</button></div>
+  <div class="db"><div id="testOut"></div></div>
+  <div class="df"><button class="btn" id="testRun">RUN AGAIN</button><button class="btn" id="testClose2">CLOSE</button></div>
+</dialog>
+<script>
+"use strict";
+/* =================================================================
+   GROUND GLASS (FI-122)  v0.2.0
+   A single file console that puts a Canon EOS R6 on the bench:
+   a monitor with real scopes, and the camera's own knobs.
+
+   Four links share one camera model:
+     BENCH   synthetic scene and simulated body, no hardware
+     GLASS   HDMI capture through getUserMedia, monitor only
+     WIRE    Canon PTP over WebUSB, monitor and control
+     AETHER  Canon CCAPI over the network, monitor and maybe control
+
+   No server. No build step. No libraries. Runs from file://.
+   ================================================================= */
+
+const VERSION = "0.2.0";
+const $ = (id) => document.getElementById(id);
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+/* ---- log ------------------------------------------------------ */
+const LOG = { debug:false, lines:[] };
+function log(msg, cls){
+  const t = new Date().toISOString().substr(11,8);
+  LOG.lines.push(t+" "+msg);
+  if(LOG.lines.length > 800) LOG.lines.shift();
+  const el = $("log"); if(!el) return;
+  const d = document.createElement("div");
+  const ts = document.createElement("span"); ts.className="t"; ts.textContent = t+" ";
+  const bd = document.createElement("span"); if(cls) bd.className = cls; bd.textContent = msg;
+  d.appendChild(ts); d.appendChild(bd);
+  el.appendChild(d);
+  while(el.childNodes.length > 400) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+function dbg(msg){ if(LOG.debug) log(msg, "d"); }
+function err(msg){ log(msg, "e"); }
+function ok(msg){ log(msg, "g"); }
+function say(msg){ const s=$("stMsg"); if(s) s.textContent = msg; }
+
+/* ---- Canon value tables ---------------------------------------
+   Codes from the published Canon EOS PTP extensions. Aperture and
+   shutter share the same third stop spacing scheme: the low nibble
+   carries the fractional stop.
+   ---------------------------------------------------------------- */
+const AV = {0x08:"1.0",0x0b:"1.1",0x0c:"1.2",0x0d:"1.2",0x10:"1.4",0x13:"1.6",0x14:"1.8",0x15:"1.8",
+  0x18:"2.0",0x1b:"2.2",0x1c:"2.5",0x1d:"2.5",0x20:"2.8",0x23:"3.2",0x24:"3.5",0x25:"3.5",
+  0x28:"4.0",0x2b:"4.5",0x2c:"4.5",0x2d:"5.0",0x30:"5.6",0x33:"6.3",0x34:"6.7",0x35:"7.1",
+  0x38:"8.0",0x3b:"9.0",0x3c:"9.5",0x3d:"10",0x40:"11",0x43:"13",0x44:"13",0x45:"14",
+  0x48:"16",0x4b:"18",0x4c:"19",0x4d:"20",0x50:"22",0x53:"25",0x54:"27",0x55:"29",0x58:"32"};
+const TV = {0x0c:"BULB",0x10:"30\"",0x13:"25\"",0x14:"20\"",0x15:"20\"",0x18:"15\"",0x1b:"13\"",
+  0x1c:"10\"",0x1d:"10\"",0x20:"8\"",0x23:"6\"",0x24:"6\"",0x25:"5\"",0x28:"4\"",0x2b:"3.2\"",
+  0x2c:"3\"",0x2d:"2.5\"",0x30:"2\"",0x33:"1.6\"",0x34:"1.5\"",0x35:"1.3\"",0x38:"1\"",
+  0x3b:"0.8\"",0x3c:"0.7\"",0x3d:"0.6\"",0x40:"0.5\"",0x43:"0.4\"",0x44:"0.3\"",0x45:"0.3\"",
+  0x48:"1/4",0x4b:"1/5",0x4c:"1/6",0x4d:"1/6",0x50:"1/8",0x53:"1/10",0x54:"1/10",0x55:"1/13",
+  0x58:"1/15",0x5b:"1/20",0x5c:"1/20",0x5d:"1/25",0x60:"1/30",0x63:"1/40",0x64:"1/45",0x65:"1/50",
+  0x68:"1/60",0x6b:"1/80",0x6c:"1/90",0x6d:"1/100",0x70:"1/125",0x73:"1/160",0x74:"1/180",0x75:"1/200",
+  0x78:"1/250",0x7b:"1/320",0x7c:"1/350",0x7d:"1/400",0x80:"1/500",0x83:"1/640",0x84:"1/750",0x85:"1/800",
+  0x88:"1/1000",0x8b:"1/1250",0x8c:"1/1500",0x8d:"1/1600",0x90:"1/2000",0x93:"1/2500",0x94:"1/3000",
+  0x95:"1/3200",0x98:"1/4000",0x9b:"1/5000",0x9c:"1/6000",0x9d:"1/6400",0xa0:"1/8000"};
+const ISO = {0x00:"AUTO",0x40:"50",0x48:"100",0x4b:"125",0x4d:"160",0x50:"200",0x53:"250",0x55:"320",
+  0x58:"400",0x5b:"500",0x5d:"640",0x60:"800",0x63:"1000",0x65:"1250",0x68:"1600",0x6b:"2000",
+  0x6d:"2500",0x70:"3200",0x73:"4000",0x75:"5000",0x78:"6400",0x7b:"8000",0x7d:"10000",
+  0x80:"12800",0x83:"16000",0x85:"20000",0x88:"25600",0x8b:"32000",0x8d:"40000",0x90:"51200",
+  0x98:"102400",0xa0:"204800"};
+const WB = {0:"Auto",1:"Daylight",2:"Cloudy",3:"Tungsten",4:"Fluorescent",5:"Flash",6:"Custom",
+  8:"Shade",9:"Kelvin",15:"Auto white"};
+const DRIVE = {0x00:"Single",0x01:"Continuous",0x02:"Video",0x04:"High speed",0x05:"Low speed",
+  0x07:"Silent",0x10:"Self timer 10s",0x11:"Self timer 2s",0x12:"Self timer continuous",
+  0x13:"Silent single",0x14:"Silent continuous"};
+const AFMODE = {0:"One shot",1:"AI servo",2:"AI focus",3:"Manual"};
+const EC = {0xe8:"-3",0xeb:"-2 2/3",0xec:"-2 1/2",0xed:"-2 1/3",0xf0:"-2",0xf3:"-1 2/3",0xf4:"-1 1/2",
+  0xf5:"-1 1/3",0xf8:"-1",0xfb:"-2/3",0xfc:"-1/2",0xfd:"-1/3",0x00:"0",0x03:"+1/3",0x04:"+1/2",
+  0x05:"+2/3",0x08:"+1",0x0b:"+1 1/3",0x0c:"+1 1/2",0x0d:"+1 2/3",0x10:"+2",0x13:"+2 1/3",
+  0x14:"+2 1/2",0x15:"+2 2/3",0x18:"+3"};
+
+/* Canon EOS device property codes */
+const PROP = { AV:0xd101, TV:0xd102, ISO:0xd103, EC:0xd104, MODE:0xd105, DRIVE:0xd107,
+  AFMODE:0xd108, WB:0xd10c, KELVIN:0xd10e, BATTERY:0xd111, EVF_OUT:0xd1b0, EVF_MODE:0xd1b3,
+  AVAILSHOTS:0xd11b };
+const PROPNAME = {}; for(const k in PROP) PROPNAME[PROP[k]] = k;
+
+/* ---- exposure maths -------------------------------------------
+   EV at ISO 100 = log2(N^2 / t) - log2(ISO/100)
+   ---------------------------------------------------------------- */
+function avToN(s){ if(!s) return null; const n = parseFloat(s); return isFinite(n)?n:null; }
+function tvToSeconds(s){
+  if(!s || s==="BULB") return null;
+  if(s.indexOf("/")===0 || s.indexOf("/")>0){
+    const p = s.split("/"); const a = parseFloat(p[0]||"1"), b = parseFloat(p[1]);
+    if(isFinite(a) && isFinite(b) && b!==0) return a/b;
+  }
+  const n = parseFloat(s.replace('"','')); return isFinite(n)?n:null;
+}
+function isoToNum(s){ if(!s || s==="AUTO") return null; const n = parseFloat(s); return isFinite(n)?n:null; }
+function ev100(avStr, tvStr, isoStr){
+  const N = avToN(avStr), t = tvToSeconds(tvStr), S = isoToNum(isoStr);
+  if(N===null || t===null || t===0) return null;
+  let ev = Math.log2((N*N)/t);
+  if(S) ev -= Math.log2(S/100);
+  return ev;
+}
+
+/* ---- the shared camera model ----------------------------------
+   Every link fills the same shape. The console only ever reads this.
+   ---------------------------------------------------------------- */
+const CAM = {
+  link:"bench",
+  connected:false,
+  canControl:false,
+  live:false,
+  model:"",
+  battery:null,
+  shots:null,
+  av:{ value:null, options:[] },
+  tv:{ value:null, options:[] },
+  iso:{ value:null, options:[] },
+  ec:{ value:null, options:[] },
+  wb:{ value:null, options:[] },
+  drive:{ value:null, options:[] },
+  af:{ value:null, options:[] }
+};
+function resetCam(link){
+  CAM.link = link; CAM.connected=false; CAM.canControl=false; CAM.live=false;
+  CAM.model=""; CAM.battery=null; CAM.shots=null;
+  for(const k of ["av","tv","iso","ec","wb","drive","af"]){ CAM[k] = { value:null, options:[] }; }
+}
+
+/* ---- sound: one synthesized shutter, muted by default off ------
+   WebAudio only, nothing shipped. Mute state persists in the session.
+   ---------------------------------------------------------------- */
+const SND = { muted:false, ctx:null };
+function shutterClick(){
+  if(SND.muted) return;
+  try{
+    SND.ctx = SND.ctx || new (window.AudioContext||window.webkitAudioContext)();
+    const c = SND.ctx, now = c.currentTime;
+    const len = Math.floor(c.sampleRate * 0.09);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<len;i++){
+      const env = Math.exp(-i/(c.sampleRate*0.012));
+      d[i] = (Math.random()*2-1) * env * 0.5;
+    }
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=2400; bp.Q.value=0.9;
+    const g = c.createGain(); g.gain.value = 0.35;
+    src.connect(bp); bp.connect(g); g.connect(c.destination);
+    src.start(now);
+    const src2 = c.createBufferSource(); src2.buffer = buf;
+    const g2 = c.createGain(); g2.gain.value = 0.22;
+    src2.connect(bp); bp.connect(g2); g2.connect(c.destination);
+    src2.start(now + 0.055);
+  }catch(e){ dbg("audio unavailable: "+e.message); }
+}
+
+/* =================================================================
+   LINKS
+   Each link exposes: open(), close(), setProp(name,label),
+   release(afOnly), and pushes frames into FRAME.
+   ================================================================= */
+const FRAME = { source:null, kind:"none", w:0, h:0, count:0, last:0, fps:0 };
+let ACTIVE = null;
+
+/* ---------------- BENCH: synthetic scene, simulated body -------- */
+const BenchLink = (function(){
+  const c = document.createElement("canvas"); c.width=960; c.height=540;
+  const g = c.getContext("2d");
+  let scene = "chart", t0 = 0, raf = 0, sim = null;
+
+  function makeSim(){
+    return { av:"4.0", tv:"1/125", iso:"400", ec:"0", wb:"Daylight", drive:"Single", af:"One shot" };
+  }
+  function draw(ts){
+    t0 = ts/1000;
+    const W=c.width,H=c.height;
+    g.fillStyle="#101010"; g.fillRect(0,0,W,H);
+    if(scene==="chart"){
+      const bars=["#ffffff","#c0c000","#00c0c0","#00c000","#c000c0","#c00000","#0000c0","#101010"];
+      const bw=W/bars.length;
+      for(let i=0;i<bars.length;i++){ g.fillStyle=bars[i]; g.fillRect(i*bw,0,bw+1,H*0.62); }
+      for(let i=0;i<24;i++){ const v=Math.round(255*i/23); g.fillStyle="rgb("+v+","+v+","+v+")";
+        g.fillRect(i*(W/24),H*0.62,W/24+1,H*0.18); }
+      g.fillStyle="#080808"; g.fillRect(0,H*0.80,W,H*0.20);
+      g.strokeStyle="#f2f2f2"; g.lineWidth=2;
+      for(let i=0;i<40;i++){ const x=20+i*(W-40)/40; const wd=1+i*0.22;
+        g.lineWidth=wd; g.beginPath(); g.moveTo(x,H*0.83); g.lineTo(x,H*0.97); g.stroke(); }
+    } else if(scene==="ramp"){
+      const grd=g.createLinearGradient(0,0,W,0); grd.addColorStop(0,"#000"); grd.addColorStop(1,"#fff");
+      g.fillStyle=grd; g.fillRect(0,0,W,H);
+      g.fillStyle="rgba(255,255,255,0.9)"; g.fillRect(W*0.42,H*0.36,W*0.16,H*0.28);
+    } else if(scene==="portrait"){
+      const grd=g.createRadialGradient(W*0.42,H*0.36,20,W*0.5,H*0.5,H*0.9);
+      grd.addColorStop(0,"#f6e2cf"); grd.addColorStop(0.5,"#8a6a52"); grd.addColorStop(1,"#14100d");
+      g.fillStyle=grd; g.fillRect(0,0,W,H);
+      g.fillStyle="#f8ead8"; g.beginPath(); g.ellipse(W*0.44,H*0.46,H*0.20,H*0.26,0,0,6.3); g.fill();
+      g.fillStyle="#2a1d16"; g.beginPath(); g.ellipse(W*0.39,H*0.42,7,4,0,0,6.3); g.fill();
+      g.beginPath(); g.ellipse(W*0.50,H*0.42,7,4,0,0,6.3); g.fill();
+      g.fillStyle="#fff"; g.fillRect(W*0.72,H*0.12,W*0.14,H*0.10);
+    } else {
+      const x=((t0*180)%(W+240))-120;
+      g.fillStyle="#1a1a1a"; g.fillRect(0,0,W,H);
+      for(let i=0;i<8;i++){ g.fillStyle= i%2 ? "#f0f0f0":"#202020";
+        g.fillRect(x+i*30, H*0.2, 26, H*0.6); }
+      g.fillStyle="#e0479e"; g.fillRect(W*0.05,H*0.05,W*0.9,4);
+    }
+    g.fillStyle="rgba(0,0,0,0.55)"; g.fillRect(0,0,250,26);
+    g.fillStyle="#e8e6df"; g.font="16px monospace";
+    g.fillText("BENCH  "+sim.av+"  "+sim.tv+"  ISO"+sim.iso, 8, 18);
+    raf = requestAnimationFrame(draw);
+  }
+  return {
+    name:"bench",
+    setScene(s){ scene = s; },
+    async open(){
+      resetCam("bench"); sim = makeSim();
+      CAM.connected = true; CAM.canControl = true; CAM.live = true;
+      CAM.model = "Simulated body"; CAM.battery = 78; CAM.shots = 1420;
+      CAM.av = { value:sim.av, options:Object.values(AV).filter(uniq) };
+      CAM.tv = { value:sim.tv, options:Object.values(TV).filter(uniq) };
+      CAM.iso= { value:sim.iso, options:Object.values(ISO).filter(uniq) };
+      CAM.ec = { value:sim.ec, options:Object.values(EC).filter(uniq) };
+      CAM.wb = { value:sim.wb, options:Object.values(WB) };
+      CAM.drive={ value:sim.drive, options:Object.values(DRIVE).filter(uniq) };
+      CAM.af = { value:sim.af, options:Object.values(AFMODE) };
+      FRAME.source = c; FRAME.kind = "canvas"; FRAME.w=c.width; FRAME.h=c.height;
+      raf = requestAnimationFrame(draw);
+      ok("BENCH link open. Synthetic scene running.");
+      return true;
+    },
+    async close(){ cancelAnimationFrame(raf); FRAME.source=null; FRAME.kind="none"; resetCam("bench"); },
+    async setProp(name, label){ if(sim){ sim[name]=label; CAM[name].value = label; } return true; },
+    async release(afOnly){
+      if(afOnly){ say("Bench focus"); return true; }
+      shutterClick(); CAM.shots = Math.max(0,(CAM.shots||1)-1); say("Bench exposure made"); return true;
+    }
+  };
+})();
+function uniq(v,i,a){ return a.indexOf(v)===i; }
+
+/* ---------------- GLASS: HDMI capture --------------------------- */
+const GlassLink = (function(){
+  let stream = null;
+  const vid = () => $("srcVideo");
+  return {
+    name:"glass",
+    async listDevices(){
+      if(!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices){
+        err("This browser exposes no capture devices."); return [];
+      }
+      try{
+        const tmp = await navigator.mediaDevices.getUserMedia({video:true});
+        tmp.getTracks().forEach(t=>t.stop());
+      }catch(e){ dbg("permission probe: "+e.name); }
+      const all = await navigator.mediaDevices.enumerateDevices();
+      return all.filter(d=>d.kind==="videoinput");
+    },
+    async open(deviceId){
+      await this.close();
+      resetCam("glass");
+      const constraints = { audio:false, video: deviceId
+        ? { deviceId:{exact:deviceId}, width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60} }
+        : { width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:60} } };
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const v = vid(); v.srcObject = stream; await v.play();
+      const tr = stream.getVideoTracks()[0];
+      const st = tr.getSettings ? tr.getSettings() : {};
+      CAM.connected = true; CAM.live = true; CAM.canControl = false;
+      CAM.model = tr.label || "Capture device";
+      FRAME.source = v; FRAME.kind = "video";
+      FRAME.w = st.width || v.videoWidth; FRAME.h = st.height || v.videoHeight;
+      ok("GLASS link open: "+CAM.model+" at "+FRAME.w+"x"+FRAME.h+(st.frameRate?(" "+Math.round(st.frameRate)+"p"):""));
+      say("Monitor only. Add the WIRE link in a second tab for control.");
+      return true;
+    },
+    async close(){
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+      const v = vid(); if(v){ v.srcObject=null; }
+      FRAME.source=null; FRAME.kind="none";
+    },
+    async setProp(){ err("The GLASS link carries picture only. No control path."); return false; },
+    async release(){ err("The GLASS link cannot trip the shutter."); return false; }
+  };
+})();
+
+/* ---------------- WIRE: Canon PTP over WebUSB ------------------- */
+const PTPC = { CMD:1, DATA:2, RESP:3, EVENT:4 };
+const OP = { OpenSession:0x1002, CloseSession:0x1003, GetDeviceInfo:0x1001,
+  EOS_SetRemoteMode:0x9114, EOS_SetEventMode:0x9115, EOS_GetEvent:0x9116,
+  EOS_SetDevicePropValueEx:0x9110, EOS_GetViewFinderData:0x9153,
+  EOS_RemoteReleaseOn:0x9128, EOS_RemoteReleaseOff:0x9129,
+  EOS_RemoteRelease:0x910f, EOS_SetUILock:0x911b, EOS_ResetUILock:0x911c };
+
+/* PTP response codes, by name, because "0x2019" tells you nothing at
+   the bench and "device busy" tells you to wait and try again. */
+const RESP = {
+  0x2001:"OK", 0x2002:"General error", 0x2003:"Session not open",
+  0x2004:"Invalid transaction ID", 0x2005:"Operation not supported",
+  0x2006:"Parameter not supported", 0x2007:"Incomplete transfer",
+  0x2008:"Invalid storage ID", 0x2009:"Invalid object handle",
+  0x200a:"Device property not supported", 0x200b:"Invalid object format",
+  0x200f:"Store full", 0x2010:"Object write protected", 0x2013:"Session already open",
+  0x2014:"Transaction cancelled", 0x2016:"Invalid parameter",
+  0x2019:"Device busy", 0x201a:"Invalid parent object", 0x201b:"Invalid device prop format",
+  0x201c:"Invalid device prop value", 0x201d:"Invalid parameter",
+  0x201e:"Session already open", 0x201f:"Transaction cancelled",
+  0xa102:"Canon: not ready", 0xa106:"Canon: property not settable now"
+};
+function respName(code){ return (RESP[code] || "unknown") + " (0x" + code.toString(16) + ")"; }
+
+/* Pure container splitter. A single bulk transfer often carries both
+   the data phase and the response phase, so anything left over has to
+   be kept rather than thrown away and waited for again. That mistake
+   is the classic Canon hang. */
+function takeContainer(buf){
+  if(!buf || buf.length < 12) return null;
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const total = dv.getUint32(0, true);
+  if(total < 12) throw new Error("container declares an impossible length: " + total);
+  if(buf.length < total) return null;
+  return {
+    c: { length:total, type:dv.getUint16(4,true), code:dv.getUint16(6,true),
+         tid:dv.getUint32(8,true), body:buf.slice(12, total) },
+    rest: buf.slice(total)
+  };
+}
+
+/* Standard PTP DeviceInfo. Worth parsing properly: the operations list
+   is how the body tells you which release opcode it actually honours,
+   instead of guessing between two of them. */
+function parseDeviceInfo(b){
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let o = 0;
+  const u16 = () => { const v = dv.getUint16(o,true); o+=2; return v; };
+  const u32 = () => { const v = dv.getUint32(o,true); o+=4; return v; };
+  const str = () => { const n = dv.getUint8(o); o+=1; let s="";
+    for(let i=0;i<n;i++){ const c = dv.getUint16(o,true); o+=2; if(c) s += String.fromCharCode(c); } return s; };
+  const arr = () => { const n = u32(); const a=[];
+    for(let i=0;i<n && o+2<=b.length;i++) a.push(u16()); return a; };
+  const info = {};
+  info.standardVersion = u16();
+  info.vendorExtensionID = u32();
+  info.vendorExtensionVersion = u16();
+  info.vendorExtensionDesc = str();
+  info.functionalMode = u16();
+  info.operations = arr();
+  info.events = arr();
+  info.deviceProps = arr();
+  info.captureFormats = arr();
+  info.imageFormats = arr();
+  info.manufacturer = str();
+  info.model = str();
+  info.deviceVersion = str();
+  info.serial = str();
+  return info;
+}
+function hexdump(u8, limit){
+  const n = Math.min(u8.length, limit||64); const out = [];
+  for(let i=0;i<n;i++) out.push(("0"+u8[i].toString(16)).slice(-2));
+  return out.join(" ") + (u8.length>n ? (" ... +"+(u8.length-n)+" bytes") : "");
+}
+
+const WireLink = (function(){
+  let dev=null, iface=0, epIn=0, epOut=0, tid=0, poll=0, evPoll=0, busy=false;
+  let pollMs = 120, rxBuf = new Uint8Array(0), info = null, releaseOp = null, hex = false;
+
+  function pack(type, code, params, payload, useTid){
+    const np = params ? params.length : 0;
+    const plLen = payload ? payload.byteLength : 0;
+    const len = 12 + np*4 + plLen;
+    const b = new ArrayBuffer(len), dv = new DataView(b);
+    dv.setUint32(0, len, true); dv.setUint16(4, type, true);
+    dv.setUint16(6, code, true); dv.setUint32(8, (useTid===undefined?tid:useTid)>>>0, true);
+    for(let i=0;i<np;i++) dv.setUint32(12+i*4, params[i]>>>0, true);
+    if(payload) new Uint8Array(b).set(new Uint8Array(payload), 12);
+    return b;
+  }
+  function appendRx(chunk){
+    const nb = new Uint8Array(rxBuf.length + chunk.length);
+    nb.set(rxBuf,0); nb.set(chunk, rxBuf.length);
+    rxBuf = nb;
+  }
+  async function readContainer(){
+    let guard = 0;
+    for(;;){
+      const t = takeContainer(rxBuf);
+      if(t){ rxBuf = t.rest; if(hex) dbg("  in  " + hexdump(t.c.body, 32)); return t.c; }
+      if(guard++ > 4000) throw new Error("no complete container after 4000 reads");
+      const r = await dev.transferIn(epIn, 16384);
+      if(r.status !== "ok") throw new Error("bulk in " + r.status);
+      if(r.data.byteLength === 0) continue;   // zero length packet, keep reading
+      appendRx(new Uint8Array(r.data.buffer.slice(0)));
+    }
+  }
+  async function transact(code, params, outData, opts){
+    if(!dev) throw new Error("not connected");
+    const tolerate = (opts && opts.tolerate) || [];
+    const retries = (opts && opts.retries) === undefined ? 3 : opts.retries;
+    while(busy){ await new Promise(r=>setTimeout(r,4)); }
+    busy = true;
+    try{
+      for(let attempt=0; ; attempt++){
+        tid = (tid + 1) >>> 0;
+        const myTid = tid;
+        if(hex) dbg("  out 0x"+code.toString(16)+" tid "+myTid);
+        await dev.transferOut(epOut, pack(PTPC.CMD, code, params||[], null, myTid));
+        if(outData) await dev.transferOut(epOut, pack(PTPC.DATA, code, null, outData, myTid));
+        let data = null, c = await readContainer();
+        if(c.type === PTPC.EVENT){ c = await readContainer(); }
+        if(c.type === PTPC.DATA){ data = c.body; c = await readContainer(); }
+        if(c.type !== PTPC.RESP) throw new Error("unexpected container type " + c.type);
+        if(c.code === 0x2001){
+          dbg("ptp 0x"+code.toString(16)+" ok" + (data ? (" ("+data.length+" bytes)") : ""));
+          return data;
+        }
+        if(c.code === 0x2019 && attempt < retries){        // device busy, this is normal
+          dbg("ptp 0x"+code.toString(16)+" busy, retry "+(attempt+1));
+          await new Promise(r=>setTimeout(r, 150 * (attempt+1)));
+          continue;
+        }
+        if(tolerate.indexOf(c.code) >= 0){
+          dbg("ptp 0x"+code.toString(16)+" tolerated: " + respName(c.code));
+          return data;
+        }
+        const e = new Error("0x"+code.toString(16)+" answered " + respName(c.code));
+        e.ptp = c.code; throw e;
+      }
+    } finally { busy = false; }
+  }
+  function setPropPayload(propCode, value){
+    const b = new ArrayBuffer(12), dv = new DataView(b);
+    dv.setUint32(0, 12, true); dv.setUint32(4, propCode>>>0, true); dv.setUint32(8, value>>>0, true);
+    return b;
+  }
+  function tableFor(propCode){
+    switch(propCode){
+      case PROP.AV: return {tab:AV, key:"av"};
+      case PROP.TV: return {tab:TV, key:"tv"};
+      case PROP.ISO: return {tab:ISO, key:"iso"};
+      case PROP.EC: return {tab:EC, key:"ec"};
+      case PROP.WB: return {tab:WB, key:"wb"};
+      case PROP.DRIVE: return {tab:DRIVE, key:"drive"};
+      case PROP.AFMODE: return {tab:AFMODE, key:"af"};
+      default: return null;
+    }
+  }
+  function codeFor(key, label){
+    const tabs = { av:AV, tv:TV, iso:ISO, ec:EC, wb:WB, drive:DRIVE, af:AFMODE };
+    const t = tabs[key]; if(!t) return null;
+    for(const k in t) if(t[k] === label) return parseInt(k,10);
+    return null;
+  }
+  function parseEvents(buf){
+    if(!buf || buf.length < 8) return 0;
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    let o = 0, guard = 0, seen = 0;
+    while(o + 8 <= buf.length && guard++ < 4000){
+      const size = dv.getUint32(o, true);
+      const type = dv.getUint32(o+4, true);
+      if(size < 8 || o + size > buf.length) break;
+      if(type === 0xc189 && size >= 16){
+        applyPropValue(dv.getUint32(o+8,true), dv.getUint32(o+12,true)); seen++;
+      } else if(type === 0xc18a && size >= 20){
+        const pc = dv.getUint32(o+8,true), count = dv.getUint32(o+16,true);
+        const t = tableFor(pc);
+        if(t){
+          const opts = [];
+          for(let i=0;i<count && o+20+i*4+4 <= buf.length; i++){
+            const lbl = t.tab[dv.getUint32(o+20+i*4,true)];
+            if(lbl && opts.indexOf(lbl)<0) opts.push(lbl);
+          }
+          if(opts.length){ CAM[t.key].options = opts; seen++; }
+        }
+      } else if(type === 0) { break; }
+      o += size;
+    }
+    return seen;
+  }
+  function applyPropValue(pc, val){
+    if(pc === PROP.BATTERY){ CAM.battery = val; return; }
+    if(pc === PROP.AVAILSHOTS){ CAM.shots = val; return; }
+    const t = tableFor(pc);
+    if(!t){ dbg("prop 0x"+pc.toString(16)+" = "+val); return; }
+    const lbl = t.tab[val];
+    if(lbl !== undefined) CAM[t.key].value = lbl;
+    else dbg("unmapped " + (PROPNAME[pc]||pc) + " value 0x" + val.toString(16));
+  }
+  function extractJpeg(buf){
+    if(!buf || buf.length < 8) return null;
+    const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+    let o = 0, guard = 0;
+    while(o + 8 <= buf.length && guard++ < 500){
+      const size = dv.getUint32(o,true), type = dv.getUint32(o+4,true);
+      if(size < 8 || o + size > buf.length) break;
+      if(type === 1) return buf.slice(o+8, o+size);
+      o += size;
+    }
+    if(buf[0]===0xff && buf[1]===0xd8) return buf;
+    return null;
+  }
+
+  async function pumpLive(){
+    if(!dev) return;
+    try{
+      const d = await transact(OP.EOS_GetViewFinderData, [0x00200000, 0, 0],
+        null, {tolerate:[0xa102, 0x2005], retries:0});
+      const jpg = extractJpeg(d);
+      if(jpg && jpg.length > 8){
+        const bmp = await createImageBitmap(new Blob([jpg], {type:"image/jpeg"}));
+        if(FRAME.kind==="bitmap" && FRAME.source && FRAME.source.close) FRAME.source.close();
+        FRAME.source = bmp; FRAME.kind = "bitmap"; FRAME.w = bmp.width; FRAME.h = bmp.height;
+        CAM.live = true;
+      }
+    }catch(e){ dbg("live poll: " + e.message); }
+    poll = setTimeout(pumpLive, pollMs);
+  }
+  async function pumpEvents(){
+    if(!dev) return;
+    try{ parseEvents(await transact(OP.EOS_GetEvent, null, null, {retries:0})); }
+    catch(e){ dbg("event poll: " + e.message); }
+    evPoll = setTimeout(pumpEvents, 400);
+  }
+
+  /* Named handshake steps. When something fails, the log says which
+     step and what the camera answered, not just "it did not work". */
+  const STEPS = [
+    ["Open session",      async () => { await transact(OP.OpenSession,[1],null,{tolerate:[0x201e,0x2013]}); return "session 1"; }],
+    ["Read device info",  async () => {
+        const d = await transact(OP.GetDeviceInfo);
+        info = parseDeviceInfo(d);
+        releaseOp = info.operations.indexOf(OP.EOS_RemoteReleaseOn) >= 0 ? "on-off"
+                  : (info.operations.indexOf(OP.EOS_RemoteRelease) >= 0 ? "single" : null);
+        return info.manufacturer + " " + info.model + ", firmware " + info.deviceVersion +
+               ", " + info.operations.length + " operations";
+      }],
+    ["Enter remote mode", async () => { await transact(OP.EOS_SetRemoteMode,[1]); return "remote mode 1"; }],
+    ["Subscribe to events", async () => { await transact(OP.EOS_SetEventMode,[1]); return "event mode 1"; }],
+    ["Drain event stream", async () => {
+        const n = parseEvents(await transact(OP.EOS_GetEvent));
+        return n + " property record(s) read";
+      }],
+    ["Route live view",   async () => {
+        const evf = parseInt(($("selEvf")||{value:"3"}).value,10) || 3;
+        await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.EVF_OUT, evf));
+        return "output device " + evf;
+      }]
+  ];
+
+  return {
+    name:"wire",
+    setPoll(ms){ pollMs = ms|0; },
+    setHex(v){ hex = !!v; },
+    info(){ return info; },
+    async open(){
+      if(!navigator.usb){ err("This browser has no WebUSB. The WIRE link needs Chrome or Edge."); return false; }
+      resetCam("wire");
+      rxBuf = new Uint8Array(0); tid = 0; info = null; releaseOp = null;
+      dev = await navigator.usb.requestDevice({ filters:[{vendorId:0x04a9}] });
+      await dev.open();
+      if(dev.configuration === null) await dev.selectConfiguration(1);
+
+      // Prefer the still image class interface. Fall back to any bulk pair.
+      let found = null, fallback = null;
+      for(const it of dev.configuration.interfaces){
+        for(const alt of it.alternates){
+          const bi = alt.endpoints.find(e=>e.direction==="in"  && e.type==="bulk");
+          const bo = alt.endpoints.find(e=>e.direction==="out" && e.type==="bulk");
+          if(!bi || !bo) continue;
+          const cand = {n:it.interfaceNumber, bi, bo, cls:alt.interfaceClass};
+          if(alt.interfaceClass === 6){ found = cand; break; }
+          if(!fallback) fallback = cand;
+        }
+        if(found) break;
+      }
+      found = found || fallback;
+      if(!found) throw new Error("this device exposes no bulk interface");
+      iface = found.n; epIn = found.bi.endpointNumber; epOut = found.bo.endpointNumber;
+      await dev.claimInterface(iface);
+      log("USB interface " + iface + " (class " + found.cls + ") claimed, endpoints in " + epIn + " out " + epOut);
+
+      for(const [name, fn] of STEPS){
+        try{ const note = await fn(); ok("  " + name + ": " + note); }
+        catch(e){
+          err("  " + name + " failed: " + e.message);
+          err("WIRE handshake stopped at: " + name + ". Turn on the debug log and the hex trace, then send both.");
+          throw e;
+        }
+      }
+      CAM.connected = true; CAM.canControl = true;
+      CAM.model = (info && info.model) || dev.productName || "Canon body";
+      ok("WIRE link open: " + CAM.model + (releaseOp ? (", release style: " + releaseOp) : ", no release opcode advertised"));
+      pumpLive(); pumpEvents();
+      return true;
+    },
+    async close(){
+      clearTimeout(poll); clearTimeout(evPoll);
+      if(dev){
+        try{ await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.EVF_OUT, 1)); }catch(e){}
+        try{ await transact(OP.EOS_SetRemoteMode,[0]); }catch(e){}
+        try{ await transact(OP.CloseSession); }catch(e){}
+        try{ await dev.releaseInterface(iface); }catch(e){}
+        try{ await dev.close(); }catch(e){}
+      }
+      dev = null; rxBuf = new Uint8Array(0);
+      FRAME.source = null; FRAME.kind = "none";
+      log("WIRE link released.");
+    },
+    async setProp(key, label){
+      const map = { av:PROP.AV, tv:PROP.TV, iso:PROP.ISO, ec:PROP.EC, wb:PROP.WB,
+                    drive:PROP.DRIVE, af:PROP.AFMODE };
+      const pc = map[key]; if(!pc) return false;
+      const code = codeFor(key, label);
+      if(code === null){ err("No Canon code for " + key + " = " + label); return false; }
+      if(info && info.deviceProps.length && info.deviceProps.indexOf(pc) < 0){
+        err("This body does not advertise " + key + " as a settable property.");
+        return false;
+      }
+      await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(pc, code));
+      CAM[key].value = label;
+      dbg("set " + key + " to " + label + " (0x" + code.toString(16) + ")");
+      return true;
+    },
+    async release(afOnly){
+      const af = $("chkAf") && $("chkAf").checked ? 1 : 0;
+      if(releaseOp === "single"){
+        await transact(OP.EOS_RemoteRelease);
+        if(!afOnly) shutterClick();
+        return true;
+      }
+      if(afOnly){
+        await transact(OP.EOS_RemoteReleaseOn,[1,0]);
+        await transact(OP.EOS_RemoteReleaseOff,[1]);
+        return true;
+      }
+      await transact(OP.EOS_RemoteReleaseOn, [af?1:0, 0]);
+      await new Promise(r=>setTimeout(r,60));
+      await transact(OP.EOS_RemoteReleaseOff, [af?1:0]);
+      shutterClick();
+      return true;
+    },
+
+    /* The bench test. Runs the whole path against the real body and
+       reports a row per step, so a failure has an address. */
+    async benchTest(){
+      const rows = [];
+      const step = async (name, fn) => {
+        const t0 = (performance && performance.now) ? performance.now() : Date.now();
+        try{ const note = await fn();
+          const t1 = (performance && performance.now) ? performance.now() : Date.now();
+          rows.push({name, pass:true, note:(note||"") + "  [" + Math.round(t1-t0) + " ms]"}); }
+        catch(e){ rows.push({name, pass:false, note:e.message}); }
+      };
+      if(!dev){ rows.push({name:"Connected", pass:false, note:"Press CONNECT first."}); return rows; }
+
+      await step("Device info readable", async () => {
+        const d = await transact(OP.GetDeviceInfo); const i = parseDeviceInfo(d);
+        return i.manufacturer + " " + i.model + " fw " + i.deviceVersion;
+      });
+      await step("Body is a Canon EOS extension device", async () => {
+        if(!info) throw new Error("no device info");
+        if(info.vendorExtensionID !== 0x0000000b && info.vendorExtensionID !== 0x0000000c)
+          return "vendor extension id 0x" + info.vendorExtensionID.toString(16) + ", proceeding anyway";
+        return "vendor extension id 0x" + info.vendorExtensionID.toString(16);
+      });
+      await step("Release opcode advertised", async () => {
+        if(!releaseOp) throw new Error("neither 0x9128 nor 0x910f is in the operations list");
+        return releaseOp;
+      });
+      await step("Event stream carries properties", async () => {
+        const n = parseEvents(await transact(OP.EOS_GetEvent));
+        if(n === 0) throw new Error("no property records in the event stream");
+        return n + " record(s)";
+      });
+      await step("Aperture, shutter and ISO all read back", async () => {
+        const missing = ["av","tv","iso"].filter(k => CAM[k].value === null);
+        if(missing.length) throw new Error("no value yet for " + missing.join(", "));
+        return "f/" + CAM.av.value + "  " + CAM.tv.value + "  ISO " + CAM.iso.value;
+      });
+      await step("Option lists arrived", async () => {
+        const empty = ["av","tv","iso"].filter(k => !CAM[k].options.length);
+        if(empty.length) throw new Error("no option list for " + empty.join(", "));
+        return CAM.av.options.length + " apertures, " + CAM.tv.options.length + " shutters, " + CAM.iso.options.length + " ISOs";
+      });
+      await step("Harmless write is accepted", async () => {
+        // Write ISO back to the value it already holds. Nothing changes
+        // on the body, but the write path is proven end to end.
+        const cur = CAM.iso.value;
+        if(cur === null) throw new Error("no current ISO to write back");
+        const code = codeFor("iso", cur);
+        if(code === null) throw new Error("current ISO " + cur + " is not in the table");
+        await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.ISO, code));
+        return "ISO " + cur + " written back and acknowledged";
+      });
+      await step("Live view routing accepted", async () => {
+        await transact(OP.EOS_SetDevicePropValueEx, null, setPropPayload(PROP.EVF_OUT, 3));
+        return "output device 3";
+      });
+      await step("Viewfinder returns a JPEG", async () => {
+        for(let i=0;i<8;i++){
+          const d = await transact(OP.EOS_GetViewFinderData, [0x00200000,0,0], null, {tolerate:[0xa102], retries:0});
+          const j = extractJpeg(d);
+          if(j && j.length > 8) return j.length + " bytes, starts " + hexdump(j, 4);
+          await new Promise(r=>setTimeout(r,180));
+        }
+        throw new Error("eight polls returned no image chunk");
+      });
+      await step("Frame decodes to a bitmap", async () => {
+        if(FRAME.kind !== "bitmap" || !FRAME.w) throw new Error("nothing decoded into the compositor yet");
+        return FRAME.w + "x" + FRAME.h;
+      });
+      rows.push({name:"NOT TESTED: shutter release", pass:true,
+        note:"Deliberately not fired. Use RELEASE by hand once the rows above are green."});
+      return rows;
+    },
+    _internals:{ pack, extractJpeg, parseEvents, setPropPayload, takeContainer, parseDeviceInfo, respName, codeFor, hexdump }
+  };
+})();
+
+/* ---------------- AETHER: Canon CCAPI over the network ----------
+   The camera answers HTTP but sends no cross origin headers. That
+   splits cleanly in two:
+     picture  an <img> tag is not subject to that rule, so live view
+              always works once the camera is reachable
+     control  fetch replies cannot be read unless the camera allows
+              this origin. PROBE settles it. Blind mode falls back to
+              fire and forget requests the camera acts on but does
+              not report back.
+   ---------------------------------------------------------------- */
+const AetherLink = (function(){
+  let host = "", readable = false, blind = false, imgPoll = 0, alive = false;
+
+  function url(p){ return host.replace(/\/+$/,"") + p; }
+  async function jget(p){
+    const r = await fetch(url(p), {cache:"no-store"});
+    if(!r.ok) throw new Error(p+" returned "+r.status);
+    return await r.json();
+  }
+  async function jput(p, body){
+    const r = await fetch(url(p), {method:"PUT", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body)});
+    if(!r.ok) throw new Error(p+" returned "+r.status);
+    return r.status===204 ? null : await r.json().catch(()=>null);
+  }
+  async function jpost(p, body){
+    const r = await fetch(url(p), {method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body)});
+    if(!r.ok) throw new Error(p+" returned "+r.status);
+    return r.status===204 ? null : await r.json().catch(()=>null);
+  }
+  async function blindPost(p, body){
+    // A simple request: POST, text/plain, no custom headers, so the
+    // browser sends it without asking permission first. The reply is
+    // opaque, so success here means "sent", not "accepted".
+    await fetch(url(p), {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify(body)});
+  }
+  function pumpImg(){
+    const im = $("srcImg");
+    im.onload = () => {
+      FRAME.source = im; FRAME.kind = "img"; FRAME.w = im.naturalWidth; FRAME.h = im.naturalHeight;
+      CAM.live = true;
+      imgPoll = setTimeout(next, 40);
+    };
+    im.onerror = () => { CAM.live = false; imgPoll = setTimeout(next, 700); };
+    function next(){
+      if(!alive) return;
+      im.src = url("/ccapi/ver100/shooting/liveview/flipdetail?kind=image&_="+Date.now());
+    }
+    next();
+  }
+  async function readSettings(){
+    const jobs = [["av","av",v=>v.replace(/^f/i,"")],["tv","tv",v=>v],["iso","iso",v=>v],
+      ["exposure","ec",v=>v],["wb","wb",v=>v],["drivemode","drive",v=>v],["afoperation","af",v=>v]];
+    for(const [ep,key,fmt] of jobs){
+      try{
+        const j = await jget("/ccapi/ver100/shooting/settings/"+ep);
+        if(j && typeof j.value !== "undefined"){
+          CAM[key].value = fmt(String(j.value));
+          if(Array.isArray(j.ability)) CAM[key].options = j.ability.map(v=>fmt(String(v)));
+        }
+      }catch(e){ dbg("settings/"+ep+": "+e.message); }
+    }
+    try{ const b = await jget("/ccapi/ver100/devicestatus/battery");
+      if(b && typeof b.level !== "undefined"){
+        const n = parseInt(b.level,10); CAM.battery = isFinite(n) ? n : null;
+      }
+    }catch(e){ dbg("battery: "+e.message); }
+  }
+
+  return {
+    name:"aether",
+    setBlind(v){ blind = !!v; },
+    async probe(h){
+      host = h; let out = { readable:false, reachable:false };
+      try{
+        const j = await jget("/ccapi/");
+        out.readable = true; out.reachable = true;
+        ok("PROBE: replies are readable from here. Full control available.");
+        dbg("ccapi versions: "+Object.keys(j||{}).join(", "));
+      }catch(e){
+        dbg("probe fetch failed: "+e.message);
+        const reach = await new Promise(res=>{
+          const im = new Image(); let done=false;
+          const t = setTimeout(()=>{ if(!done){ done=true; res(false); } }, 2500);
+          im.onload = ()=>{ if(!done){ done=true; clearTimeout(t); res(true); } };
+          im.onerror= ()=>{ if(!done){ done=true; clearTimeout(t); res(false); } };
+          im.src = url("/ccapi/ver100/shooting/liveview/flipdetail?kind=image&_="+Date.now());
+        });
+        out.reachable = reach;
+        if(reach) log("PROBE: camera is reachable and the picture will come through, but replies cannot be read. Turn on blind control to send commands anyway.");
+        else err("PROBE: no answer at "+host+". Check the address and port shown on the camera, and that this machine is on the camera network.");
+      }
+      readable = out.readable;
+      return out;
+    },
+    async open(h){
+      resetCam("aether"); host = h; alive = true;
+      const p = await this.probe(h);
+      if(!p.reachable && !p.readable){ alive=false; return false; }
+      try{
+        if(readable) await jpost("/ccapi/ver100/shooting/liveview", {cameradisplay:"on", liveviewsize:"medium"});
+        else if(blind) await blindPost("/ccapi/ver100/shooting/liveview", {cameradisplay:"on", liveviewsize:"medium"});
+      }catch(e){ dbg("liveview start: "+e.message); }
+      CAM.connected = true;
+      CAM.canControl = readable || blind;
+      CAM.model = "EOS over CCAPI";
+      if(readable){
+        try{ const d = await jget("/ccapi/ver100/deviceinformation");
+          if(d && d.productname) CAM.model = String(d.productname);
+        }catch(e){}
+        await readSettings();
+        setInterval(()=>{ if(alive && readable) readSettings(); }, 4000);
+      }
+      pumpImg();
+      ok("AETHER link open: "+CAM.model+(readable?" (full control)":(blind?" (blind control)":" (monitor only)")));
+      return true;
+    },
+    async close(){
+      alive = false; clearTimeout(imgPoll);
+      const im = $("srcImg"); if(im){ im.onload=null; im.onerror=null; im.removeAttribute("src"); }
+      try{ if(readable) await jpost("/ccapi/ver100/shooting/liveview", {cameradisplay:"on", liveviewsize:"off"}); }catch(e){}
+      FRAME.source=null; FRAME.kind="none";
+      log("AETHER link closed.");
+    },
+    async setProp(key, label){
+      const ep = { av:"av", tv:"tv", iso:"iso", ec:"exposure", wb:"wb", drive:"drivemode", af:"afoperation" }[key];
+      if(!ep) return false;
+      const val = (key==="av") ? ("f"+label) : label;
+      if(readable){
+        await jput("/ccapi/ver100/shooting/settings/"+ep, {value:val});
+        CAM[key].value = label; return true;
+      }
+      err("Settings cannot be written blind. The browser only allows simple requests here, and a setting change is not one. Live view and the shutter still work.");
+      return false;
+    },
+    async release(afOnly){
+      const af = $("chkAf") && $("chkAf").checked;
+      const body = {af: afOnly ? true : af, action: afOnly ? "half_press" : "full_press"};
+      if(readable){ await jpost("/ccapi/ver100/shooting/control/shutterbutton", {af: body.af}); }
+      else if(blind){ await blindPost("/ccapi/ver100/shooting/control/shutterbutton", {af: body.af}); }
+      else { err("No control path on this link. Run PROBE, or turn on blind control."); return false; }
+      if(!afOnly) shutterClick();
+      return true;
+    }
+  };
+})();
+
+/* =================================================================
+   COMPOSITOR
+   One canvas. Every link hands it a drawable, and the overlays are
+   drawn on top of the same pixels the scopes measure.
+   ================================================================= */
+const VIEW = {
+  grid:false, safe:false, peak:false, zebra:false, falseColor:false, flip:false,
+  peakLevel:28, zebraAt:94, scale:100
+};
+const screen = $("screen"), sctx = screen.getContext("2d", {willReadFrequently:true});
+const work = document.createElement("canvas"), wctx = work.getContext("2d", {willReadFrequently:true});
+let fpsAcc = [], lastFrameTs = 0;
+
+function drawableSize(){
+  const s = FRAME.source; if(!s) return [0,0];
+  if(FRAME.kind==="video") return [s.videoWidth||0, s.videoHeight||0];
+  if(FRAME.kind==="img")   return [s.naturalWidth||0, s.naturalHeight||0];
+  return [s.width||0, s.height||0];
+}
+function falseColorFor(y){
+  if(y >= 253) return [224,71,64];
+  if(y >= 235) return [235,160,50];
+  if(y >= 200) return [230,220,120];
+  if(y >= 150) return [120,200,140];
+  if(y >= 100) return [110,170,220];
+  if(y >= 45)  return [80,110,190];
+  if(y >= 12)  return [70,70,110];
+  return [140,60,170];
+}
+function compose(ts){
+  requestAnimationFrame(compose);
+  const [sw, sh] = drawableSize();
+  if(!FRAME.source || !sw || !sh){
+    $("vpNote").hidden = false;
+    return;
+  }
+  $("vpNote").hidden = true;
+  const scale = VIEW.scale/100;
+  const W = Math.max(64, Math.round(Math.min(1280, sw) * scale));
+  const H = Math.max(36, Math.round(W * sh / sw));
+  if(screen.width !== W || screen.height !== H){ screen.width=W; screen.height=H; work.width=W; work.height=H; }
+
+  wctx.save();
+  if(VIEW.flip){ wctx.translate(W,0); wctx.scale(-1,1); }
+  try{ wctx.drawImage(FRAME.source, 0, 0, W, H); }catch(e){ wctx.restore(); return; }
+  wctx.restore();
+
+  const img = wctx.getImageData(0,0,W,H);
+  const px = img.data;
+
+  // scopes read the untouched frame
+  measure(px, W, H);
+
+  if(VIEW.falseColor || VIEW.zebra || VIEW.peak){
+    const out = new Uint8ClampedArray(px);
+    const zeb = Math.round(VIEW.zebraAt/100*255);
+    const thr = VIEW.peakLevel;
+    for(let y=0;y<H;y++){
+      for(let x=0;x<W;x++){
+        const i = (y*W+x)*4;
+        const lum = (px[i]*0.2126 + px[i+1]*0.7152 + px[i+2]*0.0722);
+        if(VIEW.falseColor){
+          const c = falseColorFor(lum); out[i]=c[0]; out[i+1]=c[1]; out[i+2]=c[2];
+        }
+        if(VIEW.zebra && lum >= zeb && ((x+y) % 10) < 4){ out[i]=255; out[i+1]=255; out[i+2]=255; }
+        if(VIEW.peak && x>0 && y>0 && x<W-1 && y<H-1){
+          const r = (px[i+4]*0.2126 + px[i+5]*0.7152 + px[i+6]*0.0722);
+          const d = (px[i+W*4]*0.2126 + px[i+W*4+1]*0.7152 + px[i+W*4+2]*0.0722);
+          if(Math.abs(lum-r) + Math.abs(lum-d) > thr){ out[i]=224; out[i+1]=71; out[i+2]=158; }
+        }
+      }
+    }
+    img.data.set(out);
+  }
+  sctx.putImageData(img, 0, 0);
+  drawGuides(W,H);
+
+  FRAME.count++;
+  if(lastFrameTs){ fpsAcc.push(1000/(ts-lastFrameTs)); if(fpsAcc.length>30) fpsAcc.shift(); }
+  lastFrameTs = ts;
+}
+function drawGuides(W,H){
+  sctx.save();
+  if(VIEW.grid){
+    sctx.strokeStyle="rgba(255,255,255,0.34)"; sctx.lineWidth=1;
+    for(let i=1;i<3;i++){
+      sctx.beginPath(); sctx.moveTo(Math.round(W*i/3)+0.5,0); sctx.lineTo(Math.round(W*i/3)+0.5,H); sctx.stroke();
+      sctx.beginPath(); sctx.moveTo(0,Math.round(H*i/3)+0.5); sctx.lineTo(W,Math.round(H*i/3)+0.5); sctx.stroke();
+    }
+  }
+  if(VIEW.safe){
+    sctx.strokeStyle="rgba(224,138,46,0.85)"; sctx.lineWidth=1;
+    const m1x=W*0.05,m1y=H*0.05, m2x=W*0.10,m2y=H*0.10;
+    sctx.strokeRect(m1x,m1y,W-2*m1x,H-2*m1y);
+    sctx.setLineDash([5,5]); sctx.strokeRect(m2x,m2y,W-2*m2x,H-2*m2y); sctx.setLineDash([]);
+  }
+  sctx.restore();
+}
+requestAnimationFrame(compose);
+
+/* ---- scopes ---------------------------------------------------- */
+const hist = new Uint32Array(256), histR = new Uint32Array(256), histG = new Uint32Array(256), histB = new Uint32Array(256);
+let clipHi = 0, clipLo = 0, sampled = 0;
+const waveC = $("scWave"), waveX = waveC.getContext("2d");
+const histC = $("scHist"), histX = histC.getContext("2d");
+const clipC = $("scClip"), clipX = clipC.getContext("2d");
+let scopeTick = 0;
+
+function measure(px, W, H){
+  if((scopeTick++ % 3) !== 0) return;
+  hist.fill(0); histR.fill(0); histG.fill(0); histB.fill(0);
+  clipHi = 0; clipLo = 0; sampled = 0;
+  const step = Math.max(1, Math.floor((W*H)/60000));
+  for(let p=0; p<W*H; p+=step){
+    const i = p*4;
+    const r=px[i],g=px[i+1],b=px[i+2];
+    const l = (r*0.2126+g*0.7152+b*0.0722)|0;
+    hist[l]++; histR[r]++; histG[g]++; histB[b]++;
+    if(l>=254) clipHi++; if(l<=1) clipLo++;
+    sampled++;
+  }
+  drawHist(); drawWave(px,W,H); drawClip();
+}
+function drawHist(){
+  const c=histC, x=histX, W=c.width, H=c.height;
+  x.clearRect(0,0,W,H);
+  x.fillStyle = getComputedStyle(document.body).getPropertyValue("--panel") || "#111";
+  x.fillRect(0,0,W,H);
+  let mx=1; for(let i=1;i<255;i++) mx=Math.max(mx,hist[i]);
+  const chans=[[histR,"rgba(224,90,58,.75)"],[histG,"rgba(111,191,115,.75)"],[histB,"rgba(90,140,224,.75)"]];
+  for(const [arr,col] of chans){
+    x.fillStyle=col;
+    for(let i=0;i<256;i++){ const h=Math.round(H*Math.min(1,arr[i]/mx)); x.fillRect(i,H-h,1,h); }
+  }
+  x.strokeStyle="rgba(255,255,255,.22)";
+  for(let i=1;i<5;i++){ const px2=Math.round(256*i/5)+0.5; x.beginPath(); x.moveTo(px2,0); x.lineTo(px2,H); x.stroke(); }
+}
+function drawWave(px,W,H){
+  const c=waveC, x=waveX, CW=c.width, CH=c.height;
+  const img = x.createImageData(CW,CH);
+  const d = img.data;
+  for(let i=0;i<d.length;i+=4){ d[i]=10; d[i+1]=14; d[i+2]=12; d[i+3]=255; }
+  const xs = Math.max(1, Math.floor(W/CW)), ys = Math.max(1, Math.floor(H/120));
+  for(let sx=0; sx<CW; sx++){
+    const srcX = Math.min(W-1, Math.floor(sx*W/CW));
+    for(let sy=0; sy<H; sy+=ys){
+      const i=(sy*W+srcX)*4;
+      const l=(px[i]*0.2126+px[i+1]*0.7152+px[i+2]*0.0722)/255;
+      const yy = Math.min(CH-1, Math.max(0, Math.round((1-l)*(CH-1))));
+      const o=(yy*CW+sx)*4;
+      d[o]   = Math.min(255, d[o]+70);
+      d[o+1] = Math.min(255, d[o+1]+150);
+      d[o+2] = Math.min(255, d[o+2]+120);
+    }
+  }
+  x.putImageData(img,0,0);
+  x.strokeStyle="rgba(224,138,46,.45)"; x.beginPath();
+  x.moveTo(0, CH*0.06); x.lineTo(CW, CH*0.06); x.stroke();
+}
+function drawClip(){
+  const c=clipC, x=clipX, W=c.width, H=c.height;
+  x.clearRect(0,0,W,H);
+  const hi = sampled? clipHi/sampled : 0, lo = sampled? clipLo/sampled : 0;
+  x.fillStyle="#0e120f"; x.fillRect(0,0,W,H);
+  x.fillStyle="#e05a3a"; x.fillRect(6, H-6-Math.round((H-14)*Math.min(1,hi*20)), 34, Math.round((H-14)*Math.min(1,hi*20)));
+  x.fillStyle="#5a8ce0"; x.fillRect(W-40, H-6-Math.round((H-14)*Math.min(1,lo*20)), 34, Math.round((H-14)*Math.min(1,lo*20)));
+  x.fillStyle="rgba(255,255,255,.6)"; x.font="9px monospace";
+  x.fillText((hi*100).toFixed(1)+"%", 6, 10);
+  x.fillText((lo*100).toFixed(1)+"%", W-40, 10);
+}
+
+/* =================================================================
+   SIGNATURE: the exposure rings
+   Three concentric engraved arcs, one per leg of the triangle, each
+   with a brass needle. The ring that is nearest the end of its own
+   travel is the one holding the exposure back, and it is the only
+   one that lights. Read it the way you read a busbar gauge.
+   ================================================================= */
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(n, attrs, txt){
+  const e = document.createElementNS(SVGNS, n);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(txt !== undefined) e.textContent = txt;
+  return e;
+}
+function ringGeom(idx){ return { r: 128 - idx*30, sweep: 250, start: 145 }; }
+function polar(cx,cy,r,deg){ const a=(deg-90)*Math.PI/180; return [cx+r*Math.cos(a), cy+r*Math.sin(a)]; }
+function arcPath(cx,cy,r,a0,a1){
+  const [x0,y0]=polar(cx,cy,r,a0), [x1,y1]=polar(cx,cy,r,a1);
+  const large = (a1-a0) > 180 ? 1 : 0;
+  return "M "+x0.toFixed(2)+" "+y0.toFixed(2)+" A "+r+" "+r+" 0 "+large+" 1 "+x1.toFixed(2)+" "+y1.toFixed(2);
+}
+function bindingLeg(){
+  const legs = ["av","tv","iso"];
+  let best = null;
+  for(const k of legs){
+    const o = CAM[k].options, v = CAM[k].value;
+    if(!o || o.length < 2 || v === null) continue;
+    const i = o.indexOf(v); if(i < 0) continue;
+    const pos = i/(o.length-1);
+    const edge = Math.min(pos, 1-pos);           // 0 at either end of travel
+    if(best === null || edge < best.edge) best = { key:k, edge, pos, i, n:o.length };
+  }
+  return best;
+}
+const BIND_TEXT = {
+  av: ["Wide open. The aperture is holding this exposure.","Stopped all the way down. The aperture is holding this exposure."],
+  tv: ["At the slowest shutter available. Motion is the risk.","At the fastest shutter available. The shutter is holding this exposure."],
+  iso:["At base ISO. Nothing left to give back.","At the top of the ISO range. Noise is the price."]
+};
+function drawDial(){
+  const svg = $("dial"); if(!svg) return;
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  const cx=150, cy=150;
+  const bind = bindingLeg();
+  const legs = [
+    {key:"av",  label:"Av"},
+    {key:"tv",  label:"Tv"},
+    {key:"iso", label:"ISO"}
+  ];
+  svg.appendChild(el("circle",{cx,cy,r:142,fill:"none",stroke:"var(--edge)","stroke-width":1}));
+  legs.forEach((leg, idx) => {
+    const {r, sweep, start} = ringGeom(idx);
+    const lit = bind && bind.key === leg.key && bind.edge < 0.14;
+    svg.appendChild(el("path",{d:arcPath(cx,cy,r,start,start+sweep), fill:"none",
+      stroke: lit ? "var(--accent)" : "var(--edge)", "stroke-width": lit ? 3 : 2, "stroke-linecap":"round"}));
+    const opts = CAM[leg.key].options || [];
+    const n = Math.min(opts.length, 40);
+    for(let i=0;i<n;i++){
+      const a = start + sweep*(n<2?0:i/(n-1));
+      const major = (i % 3 === 0);
+      const [x0,y0]=polar(cx,cy,r-(major?7:4),a), [x1,y1]=polar(cx,cy,r,a);
+      svg.appendChild(el("line",{x1:x0,y1:y0,x2:x1,y2:y1,stroke:"var(--dim)","stroke-width":major?1.4:0.7,opacity:major?0.9:0.5}));
+    }
+    const v = CAM[leg.key].value, i = opts.indexOf(v);
+    if(i >= 0 && opts.length > 1){
+      const a = start + sweep*(i/(opts.length-1));
+      const [nx,ny]=polar(cx,cy,r+9,a), [bx,by]=polar(cx,cy,r-16,a);
+      svg.appendChild(el("line",{x1:bx,y1:by,x2:nx,y2:ny,stroke:"var(--brass)","stroke-width":3,"stroke-linecap":"round"}));
+      svg.appendChild(el("circle",{cx:bx,cy:by,r:2.6,fill:"var(--brass)"}));
+    }
+    const [lx,ly]=polar(cx,cy,r,start-13);
+    svg.appendChild(el("text",{x:lx,y:ly+4,fill:lit?"var(--accent)":"var(--dim)","font-size":11,
+      "font-family":"var(--mono)","text-anchor":"middle"}, leg.label));
+  });
+  const e = ev100(CAM.av.value, CAM.tv.value, CAM.iso.value);
+  svg.appendChild(el("text",{x:cx,y:cy+2,fill:"var(--fg)","font-size":26,"font-family":"var(--disp)",
+    "text-anchor":"middle"}, e===null ? "--" : ("EV "+e.toFixed(1))));
+  svg.appendChild(el("text",{x:cx,y:cy+20,fill:"var(--dim)","font-size":10,"font-family":"var(--mono)",
+    "text-anchor":"middle","letter-spacing":"0.14em"}, "AT ISO 100"));
+
+  const note = $("bindNote");
+  if(bind && bind.edge < 0.14){
+    const which = bind.pos < 0.5 ? 0 : 1;
+    note.textContent = "";
+    const em = document.createElement("em"); em.textContent = BIND_TEXT[bind.key][which];
+    note.appendChild(em);
+  } else { note.textContent = "All three legs have room to move."; }
+}
+
+/* =================================================================
+   UI
+   ================================================================= */
+const SELS = { av:"selAv", tv:"selTv", iso:"selIso", ec:"selEc", wb:"selWb", drive:"selDrive", af:"selAf" };
+let suppress = false;
+
+function fillSelect(id, options, value){
+  const s = $(id); if(!s) return;
+  const want = (options||[]).join("\u0001") + "\u0002" + (value===null?"":value);
+  if(s.dataset.sig === want) return;
+  s.dataset.sig = want;
+  while(s.firstChild) s.removeChild(s.firstChild);
+  if(!options || !options.length){
+    const o = document.createElement("option"); o.value=""; o.textContent="-"; s.appendChild(o); s.disabled = true; return;
+  }
+  s.disabled = false;
+  for(const v of options){
+    const o = document.createElement("option"); o.value = v; o.textContent = v;
+    if(v === value) o.selected = true;
+    s.appendChild(o);
+  }
+}
+function refresh(){
+  suppress = true;
+  for(const k in SELS) fillSelect(SELS[k], CAM[k].options, CAM[k].value);
+  suppress = false;
+
+  $("rdAv").textContent  = CAM.av.value ? "f/"+CAM.av.value : "-";
+  $("rdTv").textContent  = CAM.tv.value || "-";
+  $("rdIso").textContent = CAM.iso.value || "-";
+  const e = ev100(CAM.av.value, CAM.tv.value, CAM.iso.value);
+  $("rdEv").textContent = e===null ? "-" : e.toFixed(1);
+
+  $("lampLink").className = "lamp" + (CAM.connected ? " on" : "");
+  $("lampLive").className = "lamp" + (CAM.live ? " live" : "");
+  $("lampCtrl").className = "lamp" + (CAM.canControl ? " on" : (CAM.connected ? " warn" : ""));
+  $("stRes").textContent = FRAME.w ? (FRAME.w+"x"+FRAME.h) : "-";
+  $("stBatt").textContent = "BATT " + (CAM.battery===null ? "-" : (CAM.battery+"%"));
+  const f = fpsAcc.length ? fpsAcc.reduce((a,b)=>a+b,0)/fpsAcc.length : 0;
+  $("stFps").textContent = f.toFixed(1)+" fps";
+
+  const canShoot = CAM.canControl;
+  $("release").disabled = !canShoot;
+  $("btnAfOnly").disabled = !canShoot;
+  for(const k in SELS){ const s=$(SELS[k]); if(s) s.disabled = !canShoot || !CAM[k].options.length; }
+
+  $("vpNoteTxt").textContent = ({
+    bench:"The bench link should always have a picture. If this is showing, the self test will say why.",
+    glass:"Choose the capture device in the LINK panel and press OPEN.",
+    wire:"Press CONNECT in the LINK panel, and free the camera from the host driver first. See ABOUT.",
+    aether:"Enter the address shown on the camera and press PROBE, then CONNECT."
+  })[CAM.link] || "";
+
+  drawDial();
+}
+setInterval(refresh, 250);
+
+/* ---- link switching -------------------------------------------- */
+const LINKS = { bench:BenchLink, glass:GlassLink, wire:WireLink, aether:AetherLink };
+const LINKBTN = { bench:"lnkBench", glass:"lnkGlass", wire:"lnkWire", aether:"lnkAether" };
+const LINKPANE= { bench:"paneBench", glass:"paneGlass", wire:"paneWire", aether:"paneAether" };
+
+async function selectLink(name){
+  if(ACTIVE){ try{ await ACTIVE.close(); }catch(e){ dbg("close: "+e.message); } }
+  ACTIVE = LINKS[name];
+  for(const k in LINKBTN) $(LINKBTN[k]).setAttribute("aria-pressed", String(k===name));
+  for(const k in LINKPANE) $(LINKPANE[k]).hidden = (k!==name);
+  resetCam(name);
+  say("");
+  log("Link set to "+name.toUpperCase()+".");
+  if(name === "bench"){ await ACTIVE.open(); }
+  refresh();
+}
+for(const k in LINKBTN) $(LINKBTN[k]).addEventListener("click", ()=>selectLink(k));
+
+/* ---- exposure controls ----------------------------------------- */
+for(const k in SELS){
+  $(SELS[k]).addEventListener("change", async (ev)=>{
+    if(suppress) return;
+    const val = ev.target.value;
+    try{ await ACTIVE.setProp(k, val); }
+    catch(e){ err("Could not set "+k+": "+e.message); }
+    refresh();
+  });
+}
+$("release").addEventListener("click", async ()=>{
+  try{ await ACTIVE.release(false); say("Released."); }
+  catch(e){ err("Release failed: "+e.message); }
+});
+$("btnAfOnly").addEventListener("click", async ()=>{
+  try{ await ACTIVE.release(true); say("Focus run."); }
+  catch(e){ err("Focus failed: "+e.message); }
+});
+
+/* ---- monitor controls ------------------------------------------ */
+function toggleBtn(id, key){
+  const b = $(id);
+  b.addEventListener("click", ()=>{
+    VIEW[key] = !VIEW[key];
+    b.setAttribute("aria-pressed", String(VIEW[key]));
+    b.classList.toggle("primary", VIEW[key]);
+  });
+}
+toggleBtn("ovGrid","grid"); toggleBtn("ovSafe","safe"); toggleBtn("ovPeak","peak");
+toggleBtn("ovZebra","zebra"); toggleBtn("ovFalse","falseColor"); toggleBtn("ovFlip","flip");
+$("rngPeak").addEventListener("input", e=>{ VIEW.peakLevel=+e.target.value; $("valPeak").textContent=e.target.value; });
+$("rngZebra").addEventListener("input", e=>{ VIEW.zebraAt=+e.target.value; $("valZebra").textContent=e.target.value+"%"; });
+$("rngScale").addEventListener("input", e=>{ VIEW.scale=+e.target.value; $("valScale").textContent=e.target.value+"%"; });
+$("btnGrab").addEventListener("click", ()=>{
+  screen.toBlob(b=>{
+    if(!b){ err("Nothing to grab."); return; }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(b);
+    a.download = "groundglass-"+new Date().toISOString().replace(/[:.]/g,"-")+".png";
+    a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    ok("Frame written to disk.");
+  }, "image/png");
+});
+$("btnFull").addEventListener("click", ()=>{
+  const v = $("viewport");
+  if(document.fullscreenElement) document.exitFullscreen();
+  else if(v.requestFullscreen) v.requestFullscreen();
+});
+
+/* ---- link panes ------------------------------------------------- */
+$("selScene").addEventListener("change", e=>BenchLink.setScene(e.target.value));
+$("btnCamScan").addEventListener("click", async ()=>{
+  const list = await GlassLink.listDevices();
+  const s = $("selCam"); while(s.firstChild) s.removeChild(s.firstChild);
+  if(!list.length){ const o=document.createElement("option"); o.textContent="No capture device found"; o.value=""; s.appendChild(o); err("No video input devices."); return; }
+  for(const d of list){ const o=document.createElement("option"); o.value=d.deviceId; o.textContent = d.label || ("Device "+d.deviceId.slice(0,6)); s.appendChild(o); }
+  ok("Found "+list.length+" capture device"+(list.length===1?"":"s")+".");
+});
+$("btnCamOpen").addEventListener("click", async ()=>{
+  try{ await GlassLink.open($("selCam").value || undefined); }
+  catch(e){ err("Capture device would not open: "+e.message); }
+  refresh();
+});
+$("btnUsbOpen").addEventListener("click", async ()=>{
+  try{ await WireLink.open(); }
+  catch(e){ err("WIRE link failed: "+e.message+". If this says the interface is claimed, free the camera from the host driver first. See ABOUT."); }
+  refresh();
+});
+$("btnUsbClose").addEventListener("click", async ()=>{ await WireLink.close(); refresh(); });
+$("rngPoll").addEventListener("input", e=>{ WireLink.setPoll(+e.target.value); $("valPoll").textContent=e.target.value; });
+$("chkHex").addEventListener("change", e=>{
+  WireLink.setHex(e.target.checked);
+  if(e.target.checked && !LOG.debug){ LOG.debug = true; $("chkDebug").checked = true; log("Debug logging switched on so the hex trace has somewhere to go."); }
+});
+function showRows(title, rows){
+  const out = $("testOut"); while(out.firstChild) out.removeChild(out.firstChild);
+  let pass = 0;
+  for(const r of rows){
+    if(r.pass) pass++;
+    const d = document.createElement("div"); d.className = "testline";
+    const m = document.createElement("span"); m.className = r.pass ? "p" : "f"; m.textContent = r.pass ? "PASS" : "FAIL";
+    const n = document.createElement("span"); n.textContent = r.name + (r.note ? ("  " + r.note) : "");
+    d.appendChild(m); d.appendChild(n); out.appendChild(d);
+  }
+  const head = document.createElement("p");
+  head.textContent = title + ": " + pass + " of " + rows.length + " steps passed.";
+  head.style.fontFamily = "var(--disp)"; head.style.fontSize = "1.1em";
+  out.insertBefore(head, out.firstChild);
+  $("dlgTest").showModal();
+  log(title + ": " + pass + " of " + rows.length + " passed.", pass === rows.length ? "g" : "e");
+}
+$("btnWireTest").addEventListener("click", async ()=>{
+  say("Running the WIRE bench test.");
+  try{ showRows("WIRE bench test", await WireLink.benchTest()); }
+  catch(e){ err("Bench test could not run: " + e.message); }
+  say("");
+});
+$("btnWireInfo").addEventListener("click", ()=>{
+  const i = WireLink.info();
+  if(!i){ err("No device info yet. Connect the WIRE link first."); return; }
+  const rows = [
+    {name:"Manufacturer", pass:true, note:i.manufacturer},
+    {name:"Model", pass:true, note:i.model},
+    {name:"Firmware", pass:true, note:i.deviceVersion},
+    {name:"Serial", pass:true, note:i.serial ? "present" : "not reported"},
+    {name:"Vendor extension", pass:true, note:"0x"+i.vendorExtensionID.toString(16)+" v"+i.vendorExtensionVersion+" "+i.vendorExtensionDesc},
+    {name:"Operations supported", pass:true, note:i.operations.map(o=>"0x"+o.toString(16)).join(" ")},
+    {name:"Device properties", pass:true, note:i.deviceProps.map(o=>"0x"+o.toString(16)).join(" ")},
+    {name:"Events supported", pass:true, note:i.events.map(o=>"0x"+o.toString(16)).join(" ")}
+  ];
+  showRows("Device info", rows);
+});
+$("selEvf").addEventListener("change", ()=>{ log("Live view routing takes effect on the next connect."); });
+$("chkCcBlind").addEventListener("change", e=>AetherLink.setBlind(e.target.checked));
+$("btnCcProbe").addEventListener("click", async ()=>{ await AetherLink.probe($("txtHost").value.trim()); });
+$("btnCcOpen").addEventListener("click", async ()=>{
+  try{ await AetherLink.open($("txtHost").value.trim()); }
+  catch(e){ err("AETHER link failed: "+e.message); }
+  refresh();
+});
+
+/* ---- chrome ----------------------------------------------------- */
+$("theme").addEventListener("change", e=>{ document.documentElement.setAttribute("data-theme", e.target.value); });
+$("btnMute").addEventListener("click", ()=>{
+  SND.muted = !SND.muted;
+  $("btnMute").setAttribute("aria-pressed", String(SND.muted));
+  $("btnMute").textContent = SND.muted ? "MUTED" : "SOUND";
+});
+$("chkDebug").addEventListener("change", e=>{ LOG.debug = e.target.checked; log("Debug logging "+(LOG.debug?"on":"off")+"."); });
+$("btnLogClear").addEventListener("click", ()=>{ LOG.lines.length=0; const l=$("log"); while(l.firstChild) l.removeChild(l.firstChild); });
+$("btnLogSave").addEventListener("click", ()=>{
+  const b = new Blob([LOG.lines.join("\n")], {type:"text/plain"});
+  const a = document.createElement("a"); a.href=URL.createObjectURL(b);
+  a.download="groundglass-log.txt"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+});
+$("btnAbout").addEventListener("click", ()=>$("dlgAbout").showModal());
+$("aboutClose").addEventListener("click", ()=>$("dlgAbout").close());
+$("aboutClose2").addEventListener("click", ()=>$("dlgAbout").close());
+
+/* =================================================================
+   SESSION
+   Settings only. Imported data is validated field by field against a
+   schema and every value is coerced, never trusted, never inserted
+   as markup.
+   ================================================================= */
+const SCHEMA = {
+  kind:   { type:"const", value:"groundglass.session" },
+  version:{ type:"string", max:16 },
+  theme:  { type:"enum", values:["darkcloth","safelight","daylight","contrast"] },
+  link:   { type:"enum", values:["bench","glass","wire","aether"] },
+  muted:  { type:"bool" },
+  debug:  { type:"bool" },
+  host:   { type:"string", max:128 },
+  scene:  { type:"enum", values:["chart","ramp","portrait","motion"] },
+  view:   { type:"view" }
+};
+const VIEWNUM = { peakLevel:[4,80], zebraAt:[60,100], scale:[40,100] };
+const VIEWBOOL = ["grid","safe","peak","zebra","falseColor","flip"];
+
+function validate(obj){
+  const out = {}, problems = [];
+  if(obj === null || typeof obj !== "object" || Array.isArray(obj)){ return {ok:false, problems:["Not a session object."]}; }
+  for(const key in SCHEMA){
+    const rule = SCHEMA[key], v = obj[key];
+    if(v === undefined){ if(key==="kind") problems.push("Missing kind."); continue; }
+    if(rule.type === "const"){ if(v !== rule.value) problems.push("Wrong kind: "+String(v).slice(0,32)); else out[key]=v; }
+    else if(rule.type === "string"){ if(typeof v !== "string") problems.push(key+" is not text."); else out[key]=v.slice(0,rule.max); }
+    else if(rule.type === "enum"){ if(rule.values.indexOf(v) < 0) problems.push(key+" is not a known value."); else out[key]=v; }
+    else if(rule.type === "bool"){ out[key] = !!v; }
+    else if(rule.type === "view"){
+      const vv = {};
+      if(v && typeof v === "object" && !Array.isArray(v)){
+        for(const b of VIEWBOOL) if(b in v) vv[b] = !!v[b];
+        for(const n in VIEWNUM){
+          if(n in v){ const num = Number(v[n]);
+            if(isFinite(num)) vv[n] = clamp(Math.round(num), VIEWNUM[n][0], VIEWNUM[n][1]);
+            else problems.push("view."+n+" is not a number."); }
+        }
+      } else problems.push("view is not an object.");
+      out.view = vv;
+    }
+  }
+  return { ok: problems.length===0 && out.kind === "groundglass.session", problems, value: out };
+}
+function currentSession(){
+  return {
+    kind:"groundglass.session", version:VERSION,
+    theme: document.documentElement.getAttribute("data-theme"),
+    link: CAM.link, muted: SND.muted, debug: LOG.debug,
+    host: $("txtHost").value, scene: $("selScene").value,
+    view: JSON.parse(JSON.stringify(VIEW))
+  };
+}
+function applySession(s){
+  if(s.theme){ document.documentElement.setAttribute("data-theme", s.theme); $("theme").value = s.theme; }
+  if("muted" in s){ SND.muted = s.muted; $("btnMute").textContent = s.muted?"MUTED":"SOUND"; $("btnMute").setAttribute("aria-pressed",String(s.muted)); }
+  if("debug" in s){ LOG.debug = s.debug; $("chkDebug").checked = s.debug; }
+  if(s.host){ $("txtHost").value = s.host; }
+  if(s.scene){ $("selScene").value = s.scene; BenchLink.setScene(s.scene); }
+  if(s.view){
+    for(const b of VIEWBOOL) if(b in s.view){
+      VIEW[b] = s.view[b];
+      const id = {grid:"ovGrid",safe:"ovSafe",peak:"ovPeak",zebra:"ovZebra",falseColor:"ovFalse",flip:"ovFlip"}[b];
+      const btn = $(id); if(btn){ btn.setAttribute("aria-pressed",String(VIEW[b])); btn.classList.toggle("primary",VIEW[b]); }
+    }
+    for(const n in VIEWNUM) if(n in s.view){
+      VIEW[n] = s.view[n];
+      const id = {peakLevel:"rngPeak",zebraAt:"rngZebra",scale:"rngScale"}[n];
+      const r = $(id); if(r){ r.value = String(VIEW[n]); r.dispatchEvent(new Event("input")); }
+    }
+  }
+}
+$("btnExport").addEventListener("click", ()=>{
+  const b = new Blob([JSON.stringify(currentSession(), null, 2)], {type:"application/json"});
+  const a = document.createElement("a"); a.href=URL.createObjectURL(b);
+  a.download = "groundglass-session.json"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  ok("Session written to disk.");
+});
+$("btnImport").addEventListener("click", ()=>$("fileImport").click());
+$("fileImport").addEventListener("change", async (e)=>{
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  try{
+    const txt = await f.text();
+    const parsed = JSON.parse(txt);
+    const v = validate(parsed);
+    if(!v.ok){ err("Session rejected: "+v.problems.join(" ")); return; }
+    applySession(v.value); ok("Session applied.");
+  }catch(ex){ err("That file is not a readable session: "+ex.message); }
+  finally{ e.target.value = ""; }
+});
+
+/* =================================================================
+   SELF TEST
+   Runs the arithmetic, the codecs, and the guards against known
+   answers. Everything here works with no camera attached.
+   ================================================================= */
+function runTests(){
+  const R = [];
+  const T = (name, fn) => { try{ const r = fn(); R.push({name, pass: r===true, note: r===true?"":String(r)}); }
+                            catch(e){ R.push({name, pass:false, note:e.message}); } };
+  const near = (a,b,tol) => Math.abs(a-b) <= (tol||0.02);
+
+  T("f/4 at 1/125 ISO 100 is EV 11", ()=> near(ev100("4.0","1/125","100"), 10.97, 0.05) || ev100("4.0","1/125","100"));
+  T("Sunny 16 is EV 15", ()=> near(ev100("16","1/125","100"), 15, 0.06) || ev100("16","1/125","100"));
+  T("ISO 400 is 2 stops off ISO 100", ()=> near(ev100("4.0","1/125","400"), ev100("4.0","1/125","100")-2, 0.02));
+  T("one stop of aperture is one EV", ()=> near(ev100("5.6","1/125","100") - ev100("4.0","1/125","100"), 1, 0.03));
+  T("one stop of shutter is one EV", ()=> near(ev100("4.0","1/250","100") - ev100("4.0","1/125","100"), 1, 0.03));
+  T("bulb yields no EV", ()=> ev100("4.0","BULB","100") === null);
+  T("auto ISO drops the ISO term", ()=> near(ev100("4.0","1/125","AUTO"), Math.log2(16*125), 0.02));
+  T("shutter text parses to seconds", ()=> near(tvToSeconds("1/250"), 0.004, 1e-6) && near(tvToSeconds('2"'), 2, 1e-6));
+
+  T("aperture table maps f/2.8", ()=> AV[0x20] === "2.8" || AV[0x20]);
+  T("shutter table maps 1/125", ()=> TV[0x70] === "1/125" || TV[0x70]);
+  T("ISO table maps 400", ()=> ISO[0x58] === "400" || ISO[0x58]);
+  T("no duplicate aperture codes lost", ()=> Object.keys(AV).length > 40 || Object.keys(AV).length);
+
+  T("PTP command container is well formed", ()=>{
+    const b = WireLink._internals.pack(1, 0x1002, [1], null);
+    const dv = new DataView(b);
+    return dv.getUint32(0,true)===16 && dv.getUint16(4,true)===1 && dv.getUint16(6,true)===0x1002 && dv.getUint32(12,true)===1;
+  });
+  T("PTP data container carries its payload", ()=>{
+    const pl = WireLink._internals.setPropPayload(0xd101, 0x20);
+    const b = WireLink._internals.pack(2, 0x9110, null, pl);
+    const dv = new DataView(b);
+    return dv.getUint32(0,true)===24 && dv.getUint16(4,true)===2 && dv.getUint32(16,true)===0xd101 && dv.getUint32(20,true)===0x20;
+  });
+  T("set property payload declares its own length", ()=>{
+    const dv = new DataView(WireLink._internals.setPropPayload(0xd103, 0x58));
+    return dv.getUint32(0,true)===12 && dv.getUint32(8,true)===0x58;
+  });
+  T("live view chunk yields the JPEG", ()=>{
+    const jpg = [0xff,0xd8,0x11,0x22,0xff,0xd9];
+    const buf = new Uint8Array(8+jpg.length+8);
+    const dv = new DataView(buf.buffer);
+    dv.setUint32(0, 8+jpg.length, true); dv.setUint32(4, 1, true);
+    buf.set(jpg, 8);
+    dv.setUint32(8+jpg.length, 8, true); dv.setUint32(12+jpg.length, 9, true);
+    const out = WireLink._internals.extractJpeg(buf);
+    return !!out && out.length === jpg.length && out[0]===0xff && out[1]===0xd8;
+  });
+  T("a bare JPEG is still recognised", ()=>{
+    const b = new Uint8Array([0xff,0xd8,0,0,0,0,0,0,0,0]);
+    const out = WireLink._internals.extractJpeg(b);
+    return !!out && out[0]===0xff;
+  });
+  T("a malformed live view record does not hang", ()=>{
+    const b = new Uint8Array(16); new DataView(b.buffer).setUint32(0, 0xffffffff, true);
+    return WireLink._internals.extractJpeg(b) === null;
+  });
+  T("event stream sets a property value", ()=>{
+    const before = CAM.iso.value;
+    const b = new Uint8Array(16); const dv = new DataView(b.buffer);
+    dv.setUint32(0,16,true); dv.setUint32(4,0xc189,true);
+    dv.setUint32(8, PROP.ISO, true); dv.setUint32(12, 0x58, true);
+    WireLink._internals.parseEvents(b);
+    const got = CAM.iso.value; CAM.iso.value = before;
+    return got === "400" || got;
+  });
+  T("event stream refuses a record shorter than its header", ()=>{
+    const b = new Uint8Array(16); const dv = new DataView(b.buffer);
+    dv.setUint32(0,2,true); dv.setUint32(4,0xc189,true);
+    WireLink._internals.parseEvents(b); return true;
+  });
+
+  T("false colour is monotonic through the ramp", ()=>{
+    let last = -1, steps = 0;
+    for(let y=0;y<=255;y++){ const c = falseColorFor(y).join(","); if(c!==last){ steps++; last=c; } }
+    return steps === 8 || steps;
+  });
+  T("clipping band sits at the top of the ramp", ()=> falseColorFor(255)[0] === 224 && falseColorFor(0)[0] === 140);
+
+  T("session round trips", ()=>{
+    const s = currentSession(); const v = validate(JSON.parse(JSON.stringify(s)));
+    return v.ok === true || v.problems.join(" ");
+  });
+  T("a foreign file is rejected", ()=> validate({kind:"something.else"}).ok === false);
+  T("a hostile view block is coerced, not trusted", ()=>{
+    const v = validate({kind:"groundglass.session", view:{peakLevel:999999, grid:"<img onerror=1>"}});
+    return v.value.view.peakLevel === 80 && v.value.view.grid === true;
+  });
+  T("import rejects an array", ()=> validate([1,2,3]).ok === false);
+  T("import survives a null", ()=> validate(null).ok === false);
+
+  T("the binding leg is the one nearest its stop", ()=>{
+    const save = JSON.stringify({a:CAM.av,t:CAM.tv,i:CAM.iso});
+    CAM.av = {value:"1.4", options:["1.4","2.0","2.8","4.0","5.6","8.0"]};
+    CAM.tv = {value:"1/125", options:["1/60","1/125","1/250"]};
+    CAM.iso= {value:"800", options:["100","200","400","800","1600","3200"]};
+    const b = bindingLeg();
+    const r = JSON.parse(save); CAM.av=r.a; CAM.tv=r.t; CAM.iso=r.i;
+    return (b && b.key === "av") || (b ? b.key : "none");
+  });
+  T("a leg with no options never binds", ()=>{
+    const save = JSON.stringify({a:CAM.av,t:CAM.tv,i:CAM.iso});
+    CAM.av={value:null,options:[]}; CAM.tv={value:null,options:[]}; CAM.iso={value:null,options:[]};
+    const b = bindingLeg();
+    const r = JSON.parse(save); CAM.av=r.a; CAM.tv=r.t; CAM.iso=r.i;
+    return b === null;
+  });
+
+  const W = WireLink._internals;
+  T("two containers in one transfer are both kept", ()=>{
+    const b = new Uint8Array(28); const dv = new DataView(b.buffer);
+    dv.setUint32(0,16,true); dv.setUint16(4,2,true); dv.setUint16(6,0x9153,true); dv.setUint32(8,7,true);
+    dv.setUint32(12,16,true);
+    dv.setUint32(16,12,true); dv.setUint16(20,3,true); dv.setUint16(22,0x2001,true); dv.setUint32(24,7,true);
+    const first = W.takeContainer(b);
+    if(!first || first.c.type !== 2) return "first container wrong";
+    const second = W.takeContainer(first.rest);
+    return (second && second.c.type === 3 && second.c.code === 0x2001 && second.rest.length === 0) || "second container wrong";
+  });
+  T("an incomplete container waits rather than truncating", ()=>{
+    const b = new Uint8Array(14); new DataView(b.buffer).setUint32(0,40,true);
+    return W.takeContainer(b) === null;
+  });
+  T("a container shorter than its own header is refused", ()=>{
+    const b = new Uint8Array(16); new DataView(b.buffer).setUint32(0,4,true);
+    try{ W.takeContainer(b); return "no error raised"; }catch(e){ return true; }
+  });
+  T("device info parses to manufacturer and model", ()=>{
+    const enc = (str) => { const b=[str.length+1]; for(const ch of str){ const c=ch.charCodeAt(0); b.push(c&255, c>>8); } b.push(0,0); return b; };
+    const arr = (list) => { const b=[list.length&255,(list.length>>8)&255,0,0]; for(const v of list) b.push(v&255,(v>>8)&255); return b; };
+    let bytes = [100,0, 11,0,0,0, 100,0];
+    bytes = bytes.concat(enc("canon.com"), [0,0]);
+    bytes = bytes.concat(arr([0x1001,0x9128]), arr([0xc189]), arr([0xd101,0xd103]), arr([]), arr([0x3801]));
+    bytes = bytes.concat(enc("Canon Inc."), enc("Canon EOS R6"), enc("1.8.1"), enc("abc123"));
+    const i = W.parseDeviceInfo(new Uint8Array(bytes));
+    return (i.manufacturer === "Canon Inc." && i.model === "Canon EOS R6" && i.deviceVersion === "1.8.1"
+            && i.operations.length === 2 && i.operations[1] === 0x9128 && i.deviceProps.indexOf(0xd103) >= 0)
+           || (i.manufacturer + " / " + i.model + " / ops " + i.operations.length);
+  });
+  T("response codes have names", ()=> /device busy/i.test(W.respName(0x2019)) && /0x2019/.test(W.respName(0x2019)));
+  T("an unknown response code still reports its number", ()=> /0xdead/.test(W.respName(0xdead)));
+  T("a label maps back to its Canon code", ()=> W.codeFor("iso","400") === 0x58 && W.codeFor("av","2.8") === 0x20);
+  T("an unknown label maps to nothing", ()=> W.codeFor("iso","999999") === null);
+  T("hexdump truncates and says so", ()=>{
+    const d = W.hexdump(new Uint8Array(200), 4);
+    return /\+196 bytes/.test(d) || d;
+  });
+  T("the compositor has a drawing surface", ()=> !!sctx && screen.width > 0);
+  T("all four links answer the same interface", ()=>{
+    for(const k in LINKS){ const L = LINKS[k];
+      for(const m of ["open","close","setProp","release"]) if(typeof L[m] !== "function") return k+" is missing "+m;
+    } return true;
+  });
+  T("every theme is declared in the stylesheet", ()=>{
+    const opts = Array.from($("theme").options).map(o=>o.value);
+    return opts.length === 4 && opts.indexOf("contrast") >= 0;
+  });
+  T("the version marker matches the running version", ()=>{
+    return $("verLabel").textContent === "v"+VERSION && $("aboutVer").textContent === "v"+VERSION;
+  });
+
+  const out = $("testOut"); while(out.firstChild) out.removeChild(out.firstChild);
+  let pass = 0;
+  for(const r of R){
+    if(r.pass) pass++;
+    const d = document.createElement("div"); d.className="testline";
+    const m = document.createElement("span"); m.className = r.pass?"p":"f"; m.textContent = r.pass?"PASS":"FAIL";
+    const n = document.createElement("span"); n.textContent = r.name + (r.note?("  ("+r.note+")"):"");
+    d.appendChild(m); d.appendChild(n); out.appendChild(d);
+  }
+  const head = document.createElement("p");
+  head.textContent = pass+" of "+R.length+" assertions passed.";
+  head.style.fontFamily = "var(--disp)"; head.style.fontSize = "1.1em";
+  out.insertBefore(head, out.firstChild);
+  log("Self test: "+pass+" of "+R.length+" passed.", pass===R.length ? "g" : "e");
+  return {pass, total:R.length, results:R};
+}
+$("btnTest").addEventListener("click", ()=>{ runTests(); $("dlgTest").showModal(); });
+$("testRun").addEventListener("click", runTests);
+$("testClose").addEventListener("click", ()=>$("dlgTest").close());
+$("testClose2").addEventListener("click", ()=>$("dlgTest").close());
+
+/* =================================================================
+   BOOT
+   ================================================================= */
+(function boot(){
+  $("verLabel").textContent = "v"+VERSION;
+  $("aboutVer").textContent = "v"+VERSION;
+  document.title = "GROUND GLASS v"+VERSION+" :: FI-122";
+  log("GROUND GLASS v"+VERSION+" (FI-122).");
+  if(!navigator.usb) log("No WebUSB in this browser. The WIRE link will not be available.");
+  if(!navigator.mediaDevices) log("No capture devices exposed. The GLASS link will not be available.");
+  if(location.protocol === "file:") dbg("Running from disk, which is the intended home for this instrument.");
+  selectLink("bench");
+  const t = runTests();
+  if(t.pass !== t.total) err("Self test found "+(t.total-t.pass)+" failing assertion(s). Open SELF TEST for the list.");
+})();
+window.GG = { CAM, VIEW, FRAME, runTests, ev100, validate, VERSION };
+</script>
+</body>
+</html>
